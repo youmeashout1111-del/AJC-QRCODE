@@ -340,6 +340,33 @@ def get_qrcodes():
         
     return jsonify(result)
 
+@app.route('/api/qrcodes/public/<string:qr_id>', methods=['GET'])
+def get_public_qrcode(qr_id):
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_sel = """
+        SELECT id, name, hashtag, facebook_url, tiktok_url, youtube_url,
+               frame_image, frame_image_data, default_location,
+               show_facebook, show_tiktok, show_youtube, capture_location
+        FROM qrcodes
+        WHERE id = %s
+    """ if is_pg else """
+        SELECT id, name, hashtag, facebook_url, tiktok_url, youtube_url,
+               frame_image, frame_image_data, default_location,
+               show_facebook, show_tiktok, show_youtube, capture_location
+        FROM qrcodes
+        WHERE id = ?
+    """
+    row = execute_query(q_sel, (qr_id,), fetch_one=True)
+    if not row:
+        return jsonify({'error': 'រកមិនឃើញ QR Code នេះទេ!'}), 404
+        
+    q = dict(row)
+    q['show_facebook']    = bool(q['show_facebook'])
+    q['show_tiktok']      = bool(q['show_tiktok'])
+    q['show_youtube']     = bool(q['show_youtube'])
+    q['capture_location'] = bool(q['capture_location'])
+    return jsonify(q)
+
 @app.route('/api/qrcodes', methods=['POST'])
 def create_qrcode():
     auth_key = request.headers.get('Authorization')
