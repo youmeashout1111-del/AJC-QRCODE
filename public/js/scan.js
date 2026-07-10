@@ -30,11 +30,10 @@ async function parseQueryParams() {
 // Fetch specific QR config from API
 async function fetchQRConfig() {
   try {
-    const res = await fetch('/api/qrcodes');
-    if (!res.ok) throw new Error('Cannot load QR codes settings');
+    const res = await fetch('/api/qrcodes/public/' + qrId);
+    if (!res.ok) throw new Error('Cannot load QR code settings');
     
-    const qrList = await res.json();
-    qrConfig = qrList.find(q => q.id === qrId);
+    qrConfig = await res.json();
     
     // Support a mock TEST QR code for debugging if list is empty
     if (!qrConfig && qrId === 'test_qr') {
