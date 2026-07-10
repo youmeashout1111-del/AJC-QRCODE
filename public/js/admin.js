@@ -71,10 +71,7 @@ async function validateAndLoad(key) {
     await fetchData();
     
     if (currentUserRole === 'admin' || currentUserRole === 'moderator') {
-      await Promise.all([
-        loadKeysData(),
-        loadFramesData()
-      ]);
+      await loadKeysData();
     }
     
     // Hide login screen and show welcome badge
@@ -135,13 +132,11 @@ function logout() {
 function configureRoleUI() {
   const createFormAside = document.querySelector('aside');
   const settingsTabBtn = document.getElementById('tab-btn-settings');
-  const framesTabBtn = document.getElementById('tab-btn-frames');
   const dashboardGrid = document.querySelector('.dashboard-grid');
   
   if (currentUserRole === 'user') {
     if (createFormAside) createFormAside.classList.add('hidden');
     if (settingsTabBtn) settingsTabBtn.classList.add('hidden');
-    if (framesTabBtn) framesTabBtn.classList.add('hidden');
     if (dashboardGrid) dashboardGrid.classList.add('full-width');
     
     const selectAllQrs = document.getElementById('select-all-qrs');
@@ -149,7 +144,6 @@ function configureRoleUI() {
   } else {
     if (createFormAside) createFormAside.classList.remove('hidden');
     if (settingsTabBtn) settingsTabBtn.classList.remove('hidden');
-    if (framesTabBtn) framesTabBtn.classList.remove('hidden');
     if (dashboardGrid) dashboardGrid.classList.remove('full-width');
     
     const selectAllQrs = document.getElementById('select-all-qrs');
@@ -319,17 +313,6 @@ function setupEventListeners() {
     showToast('បានផ្ទុកទិន្នន័យថ្មីៗឡើងវិញ!', 'success');
   });
 
-  // Upload Frame form submission
-  const uploadFrameForm = document.getElementById('upload-frame-form');
-  if (uploadFrameForm) {
-    uploadFrameForm.addEventListener('submit', handleUploadFrame);
-  }
-
-  // Delete all frames button
-  const deleteAllFramesBtn = document.getElementById('btn-delete-all-frames');
-  if (deleteAllFramesBtn) {
-    deleteAllFramesBtn.addEventListener('click', deleteAllFrames);
-  }
 }
 
 // Fetch all QR codes, scan logs and update UI
@@ -676,11 +659,8 @@ async function handleCreateQR(e) {
     // Reset Form
     form.reset();
     
-    // Reset Preset Selection
-    const frameOptions = document.querySelectorAll('.frame-option');
-    frameOptions.forEach(opt => opt.classList.remove('selected'));
-    document.querySelector('[data-template="default_frame.svg"]').classList.add('selected');
-    document.getElementById('frame-template').value = 'default_frame.svg';
+    // Reset Custom Selection
+    document.getElementById('frame-template').value = 'custom';
     document.getElementById('custom-frame-badge').classList.add('hidden');
     
     // Fetch and redraw
@@ -1688,194 +1668,3 @@ window.updateKeyNote = async function(keyVal, roleVal, spanEl) {
 }
 
 window.deleteSecurityKey = deleteSecurityKey;
-
-// ── Photo Frames Management Functions ────────────────────────────────────────
-
-async function loadFramesData() {
-  try {
-    const res = await fetch('/api/frames', {
-      headers: {
-        'Authorization': getAuthKey(),
-        'X-Device-ID': getDeviceID()
-      }
-    });
-    if (res.status === 401) {
-      logout();
-      return;
-    }
-    if (!res.ok) throw new Error('Failed to fetch frames');
-    photoFrames = await res.json();
-    renderFrames();
-  } catch (err) {
-    console.error('Error loading frames:', err);
-    showToast('មានបញ្ហាក្នុងការទាញយក Photo Frames!', 'error');
-  }
-}
-
-function renderFrames() {
-  const grid = document.getElementById('frames-gallery-grid');
-  const emptyState = document.getElementById('frames-empty-state');
-  
-  if (!grid) return;
-  grid.innerHTML = '';
-  
-  if (photoFrames.length === 0) {
-    emptyState.classList.remove('hidden');
-    return;
-  }
-  
-  emptyState.classList.add('hidden');
-  
-  photoFrames.forEach(frame => {
-    const card = document.createElement('div');
-    card.className = `glass-panel ${frame.is_active ? 'active-frame-card' : ''}`;
-    card.style.cssText = `
-      padding: 15px; 
-      text-align: center; 
-      position: relative; 
-      border-color: ${frame.is_active ? '#00f2fe' : 'rgba(255,255,255,0.08)'};
-      box-shadow: ${frame.is_active ? '0 0 15px rgba(0, 242, 254, 0.2)' : 'none'};
-      transition: all 0.3s ease;
-    `;
-    
-    card.innerHTML = `
-      <img src="${frame.image_data}" style="width: 100%; aspect-ratio: 1; object-fit: contain; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.1);">
-      <div style="font-size: 0.85rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; margin-bottom: 12px;" title="${escapeHTML(frame.name)}">
-        ${escapeHTML(frame.name)}
-      </div>
-      <div style="display: flex; gap: 8px; justify-content: center;">
-        <button class="btn ${frame.is_active ? 'btn-success' : 'btn-secondary'} btn-sm" onclick="setActiveFrame(${frame.id})" style="font-size: 0.75rem; padding: 6px 12px; font-weight: 600; display: flex; align-items: center; gap: 4px;">
-          ${frame.is_active ? '<i class="fa-solid fa-circle-check"></i> កំពុងប្រើ' : '<i class="fa-solid fa-play"></i> ជ្រើសរើស'}
-        </button>
-        <button class="btn btn-danger btn-sm" onclick="deleteSingleFrame(${frame.id})" style="font-size: 0.75rem; padding: 6px 10px;" title="លុប Frame នេះ">
-          <i class="fa-solid fa-trash"></i>
-        </button>
-      </div>
-    `;
-    grid.appendChild(card);
-  });
-}
-
-async function handleUploadFrame(e) {
-  e.preventDefault();
-  
-  const form = e.target;
-  const fileInput = document.getElementById('new-frame-file');
-  if (fileInput.files.length === 0) return;
-  
-  const submitBtn = form.querySelector('button[type="submit"]');
-  const originalHtml = submitBtn.innerHTML;
-  
-  submitBtn.disabled = true;
-  submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> កំពុងបញ្ចូល...`;
-  
-  const formData = new FormData();
-  formData.append('frame_file', fileInput.files[0]);
-  
-  try {
-    const res = await fetch('/api/frames', {
-      method: 'POST',
-      headers: {
-        'Authorization': getAuthKey(),
-        'X-Device-ID': getDeviceID()
-      },
-      body: formData
-    });
-    
-    const data = await res.json();
-    if (!res.ok) {
-      showToast(data.error || 'បញ្ចូល Frame បរាជ័យ!', 'error');
-      return;
-    }
-    
-    showToast('បានបញ្ចូល Photo Frame ដោយជោគជ័យ!', 'success');
-    form.reset();
-    await loadFramesData();
-  } catch (err) {
-    console.error('Upload frame error:', err);
-    showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = originalHtml;
-  }
-}
-
-async function deleteSingleFrame(id) {
-  if (!confirm('តើអ្នកពិតជាចង់លុប Photo Frame នេះមែនទេ?')) return;
-  
-  try {
-    const res = await fetch(`/api/frames/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': getAuthKey(),
-        'X-Device-ID': getDeviceID()
-      }
-    });
-    
-    const data = await res.json();
-    if (!res.ok) {
-      showToast(data.error || 'លុប Frame បរាជ័យ!', 'error');
-      return;
-    }
-    
-    showToast('បានលុប Frame រួចរាល់!', 'success');
-    await loadFramesData();
-  } catch (err) {
-    console.error('Delete frame error:', err);
-    showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
-  }
-}
-
-async function deleteAllFrames() {
-  if (!confirm('តើអ្នកពិតជាចង់លុប Photo Frames ទាំងអស់មែនទេ?')) return;
-  
-  try {
-    const res = await fetch('/api/frames/delete-all', {
-      method: 'POST',
-      headers: {
-        'Authorization': getAuthKey(),
-        'X-Device-ID': getDeviceID()
-      }
-    });
-    
-    const data = await res.json();
-    if (!res.ok) {
-      showToast(data.error || 'លុបបរាជ័យ!', 'error');
-      return;
-    }
-    
-    showToast('បានលុប Frame ទាំងអស់រួចរាល់!', 'success');
-    await loadFramesData();
-  } catch (err) {
-    console.error('Delete all frames error:', err);
-    showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
-  }
-}
-
-async function setActiveFrame(id) {
-  try {
-    const res = await fetch(`/api/frames/active/${id}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': getAuthKey(),
-        'X-Device-ID': getDeviceID()
-      }
-    });
-    
-    const data = await res.json();
-    if (!res.ok) {
-      showToast(data.error || 'កំណត់មិនបានជោគជ័យ!', 'error');
-      return;
-    }
-    
-    showToast('បានកំណត់យក Frame នេះមកប្រើប្រាស់!', 'success');
-    await loadFramesData();
-  } catch (err) {
-    console.error('Set active frame error:', err);
-    showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
-  }
-}
-
-window.setActiveFrame = setActiveFrame;
-window.deleteSingleFrame = deleteSingleFrame;
-window.loadFramesData = loadFramesData;

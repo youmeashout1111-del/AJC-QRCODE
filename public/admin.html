@@ -156,25 +156,21 @@
             <input type="text" id="qr-default-location" name="default_location" placeholder="ឧ. ផ្សារអូរឫស្សី Stall A12">
           </div>
 
-          <!-- Frame Selection (Hidden - frames are managed globally in the new tab) -->
-          <div class="form-group" style="display: none;">
-            <label>ជ្រើសរើស Photo Frame Cover (SVG/PNG)</label>
-            <div class="frame-templates-grid">
-              <div class="frame-option selected" data-template="default_frame.svg">
-                <img src="uploads/default_frame.svg" alt="Default Frame">
-                <span>Default Frame</span>
-              </div>
-              <div class="frame-option" id="upload-custom-trigger">
-                <div class="file-upload-wrapper" style="height: 100%; border-style: dashed; padding: 10px 0;">
-                  <i class="fa-solid fa-cloud-arrow-up" style="font-size: 1.2rem;"></i>
-                  <span style="font-size: 0.7rem;">បញ្ចូល Frame ថ្មី</span>
+          <!-- Frame Selection (Restored to sidebar creation form) -->
+          <div class="form-group">
+            <label>បញ្ចូល Photo Frame Cover (PNG/SVG) *</label>
+            <div class="frame-templates-grid" style="grid-template-columns: 1fr;">
+              <div class="frame-option selected" id="upload-custom-trigger" style="height: 80px;" data-template="custom">
+                <div class="file-upload-wrapper" style="height: 100%; border-style: dashed; padding: 15px 0;">
+                  <i class="fa-solid fa-cloud-arrow-up" style="font-size: 1.8rem; color: #00f2fe;"></i>
+                  <span style="font-size: 0.9rem; font-weight: 600; margin-top: 5px;">ចុចទីនេះ ដើម្បី Upload Photo Frame</span>
                 </div>
               </div>
             </div>
-            <input type="file" id="frame-file" name="frame_file" accept="image/*" class="hidden">
-            <input type="hidden" id="frame-template" name="frame_template" value="default_frame.svg">
+            <input type="file" id="frame-file" name="frame_file" accept="image/*" class="hidden" required>
+            <input type="hidden" id="frame-template" name="frame_template" value="custom">
             <div id="custom-frame-badge" class="qr-tag hidden" style="margin-top: 10px; display: block; text-align: center;">
-              <i class="fa-solid fa-image"></i> បានជ្រើសរើស File ផ្ទាល់ខ្លួន
+              <i class="fa-solid fa-image"></i> បានជ្រើសរើស File រួចរាល់
             </div>
           </div>
 
@@ -247,9 +243,6 @@
           </button>
           <button id="tab-btn-settings" class="tab-btn hidden" onclick="switchTab('settings-tab')">
             <i class="fa-solid fa-key"></i> កំណត់សិទ្ធិ Keys
-          </button>
-          <button id="tab-btn-frames" class="tab-btn hidden" onclick="switchTab('frames-tab')">
-            <i class="fa-solid fa-image"></i> គ្រប់គ្រង Frame រូបថត
           </button>
         </div>
 
@@ -357,47 +350,6 @@
                 <!-- Dynamically populated -->
               </tbody>
             </table>
-          </div>
-        </section>
-
-        <!-- Tab 4: Manage Frames -->
-        <section id="frames-tab" class="tab-content">
-          <div style="margin-bottom: 20px;">
-            <h2><i class="fa-solid fa-image" style="color: #00f2fe;"></i> គ្រប់គ្រង Photo Frames</h2>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">បញ្ចូល ឬលុប Frame សម្រាប់ថតរូប។ កំណត់ Frame ណាមួយជា Active ដើម្បីប្រើប្រាស់។</p>
-          </div>
-
-          <!-- Upload Frame Section -->
-          <div class="glass-panel" style="padding: 20px; margin-bottom: 25px; border-color: rgba(0, 242, 254, 0.15); box-shadow: 0 8px 32px rgba(0, 242, 254, 0.05);">
-            <h3 style="font-size: 1.05rem; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; color: #fff;"><i class="fa-solid fa-cloud-arrow-up" style="color: #00f2fe;"></i> បញ្ចូល Frame ថ្មី (Upload Frame)</h3>
-            <form id="upload-frame-form" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
-              <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 240px;">
-                <label for="new-frame-file" style="font-size: 0.85rem; margin-bottom: 8px;">ជ្រើសរើសឯកសាររូបភាព Frame (PNG/SVG) *</label>
-                <input type="file" id="new-frame-file" accept="image/*" required style="margin-bottom: 0; padding: 6px; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff; height: 42px; line-height: 28px;">
-              </div>
-              <button type="submit" class="btn btn-primary" style="height: 42px; background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);">
-                <i class="fa-solid fa-upload"></i> Upload Frame
-              </button>
-            </form>
-          </div>
-
-          <!-- Frames Gallery Section -->
-          <div class="glass-panel" style="padding: 20px; border-color: rgba(255, 255, 255, 0.08);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px;">
-              <h3 style="font-size: 1.05rem; color: #fff; margin: 0;"><i class="fa-solid fa-photo-film" style="color: #00f2fe;"></i> បញ្ជី Frame ទាំងអស់</h3>
-              <button id="btn-delete-all-frames" class="btn btn-danger btn-sm" style="padding: 8px 16px; font-weight: 600;">
-                <i class="fa-solid fa-trash-can"></i> លុបទាំងអស់ (Delete All)
-              </button>
-            </div>
-
-            <!-- Frames Gallery Grid -->
-            <div id="frames-gallery-grid" class="dashboard-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px;">
-              <!-- Dynamically populated frames card list -->
-            </div>
-            <div id="frames-empty-state" class="text-center" style="padding: 40px 0; color: var(--text-muted);">
-              <i class="fa-regular fa-image" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
-              <p>មិនទាន់មាន Photo Frame ណាមួយត្រូវបានបញ្ចូលនៅឡើយទេ!</p>
-            </div>
           </div>
         </section>
 

@@ -89,23 +89,13 @@ async function fetchQRConfig() {
       }
     }
     
-    // Fetch active frame mask from server (global active frame)
-    let frameSrc = '';
-    try {
-      const frameRes = await fetch('/api/frames/active');
-      if (frameRes.ok) {
-        const activeFrame = await frameRes.json();
-        frameSrc = activeFrame.image_data;
-      }
-    } catch (e) {
-      console.error('Error fetching active frame:', e);
-    }
-    
-    // Fallback if no active frame is set
-    if (!frameSrc) {
-      frameSrc = 'uploads/default_frame.svg';
-    }
-    
+    // Set frame mask — use Base64 data URI if available (works on Render.com),
+    // otherwise fall back to the API image endpoint or static uploads/
+    const frameSrc = qrConfig.frame_image_data
+      ? qrConfig.frame_image_data
+      : (qrConfig.id && qrConfig.id !== 'test_qr'
+          ? `/api/frame-image/${qrConfig.id}`
+          : `uploads/${qrConfig.frame_image}`);
     document.getElementById('camera-frame-mask').src = frameSrc;
     
   } catch (error) {
