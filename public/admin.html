@@ -156,21 +156,34 @@
             <input type="text" id="qr-default-location" name="default_location" placeholder="ឧ. ផ្សារអូរឫស្សី Stall A12">
           </div>
 
-          <!-- Frame Selection (Restored to sidebar creation form) -->
-          <div class="form-group">
-            <label>បញ្ចូល Photo Frame Cover (PNG/SVG) *</label>
-            <div class="frame-templates-grid" style="grid-template-columns: 1fr;">
-              <div class="frame-option selected" id="upload-custom-trigger" style="height: 80px;" data-template="custom">
-                <div class="file-upload-wrapper" style="height: 100%; border-style: dashed; padding: 15px 0;">
-                  <i class="fa-solid fa-cloud-arrow-up" style="font-size: 1.8rem; color: #00f2fe;"></i>
-                  <span style="font-size: 0.9rem; font-weight: 600; margin-top: 5px;">ចុចទីនេះ ដើម្បី Upload Photo Frame</span>
+          <!-- Restored Sidebar Frame Manager with Instant Upload & Live List -->
+          <div class="form-group" id="sidebar-frame-manager-group" style="display: none; border: 1px solid rgba(255, 255, 255, 0.08); padding: 12px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); margin-bottom: 20px;">
+            <label style="margin-bottom: 8px; color: #fff; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+              <span>គ្រប់គ្រង Photo Frame Cover *</span>
+              <span id="upload-status" style="font-size: 0.72rem; color: #00f2fe;"></span>
+            </label>
+            
+            <!-- Upload Box Trigger -->
+            <div class="frame-templates-grid" style="grid-template-columns: 1fr; margin-bottom: 12px;">
+              <div class="frame-option" id="upload-custom-trigger" style="height: 70px; cursor: pointer; border-radius: 6px; border: 2px dashed rgba(0, 242, 254, 0.4); background: rgba(0, 242, 254, 0.03); display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
+                <div class="file-upload-wrapper" style="text-align: center;">
+                  <i class="fa-solid fa-cloud-arrow-up" id="upload-icon" style="font-size: 1.4rem; color: #00f2fe; margin-bottom: 2px;"></i>
+                  <div style="font-size: 0.78rem; font-weight: 600; color: #fff;" id="upload-text">ចុចទីនេះ ដើម្បី Upload Frame</div>
                 </div>
               </div>
             </div>
-            <input type="file" id="frame-file" name="frame_file" accept="image/*" class="hidden" required>
-            <input type="hidden" id="frame-template" name="frame_template" value="custom">
-            <div id="custom-frame-badge" class="qr-tag hidden" style="margin-top: 10px; display: block; text-align: center;">
-              <i class="fa-solid fa-image"></i> បានជ្រើសរើស File រួចរាល់
+            
+            <input type="file" id="frame-file" accept="image/*" class="hidden">
+            
+            <!-- Header for List -->
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 4px;">
+              <span>បញ្ជី Frame (ថ្មីៗនៅខាងលើ)</span>
+              <a href="#" id="sidebar-clear-all-frames" style="color: var(--color-danger); text-decoration: none; font-size: 0.72rem; font-weight: 600;">លុបទាំងអស់</a>
+            </div>
+            
+            <!-- Live List Container -->
+            <div id="sidebar-frames-list" style="max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 2px;">
+              <!-- Dynamically populated frame list -->
             </div>
           </div>
 

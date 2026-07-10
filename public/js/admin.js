@@ -71,7 +71,10 @@ async function validateAndLoad(key) {
     await fetchData();
     
     if (currentUserRole === 'admin' || currentUserRole === 'moderator') {
-      await loadKeysData();
+      await Promise.all([
+        loadKeysData(),
+        loadFramesData()
+      ]);
     }
     
     // Hide login screen and show welcome badge
@@ -132,11 +135,13 @@ function logout() {
 function configureRoleUI() {
   const createFormAside = document.querySelector('aside');
   const settingsTabBtn = document.getElementById('tab-btn-settings');
+  const frameManagerGroup = document.getElementById('sidebar-frame-manager-group');
   const dashboardGrid = document.querySelector('.dashboard-grid');
   
   if (currentUserRole === 'user') {
     if (createFormAside) createFormAside.classList.add('hidden');
     if (settingsTabBtn) settingsTabBtn.classList.add('hidden');
+    if (frameManagerGroup) frameManagerGroup.style.display = 'none';
     if (dashboardGrid) dashboardGrid.classList.add('full-width');
     
     const selectAllQrs = document.getElementById('select-all-qrs');
@@ -144,6 +149,7 @@ function configureRoleUI() {
   } else {
     if (createFormAside) createFormAside.classList.remove('hidden');
     if (settingsTabBtn) settingsTabBtn.classList.remove('hidden');
+    if (frameManagerGroup) frameManagerGroup.style.display = 'block';
     if (dashboardGrid) dashboardGrid.classList.remove('full-width');
     
     const selectAllQrs = document.getElementById('select-all-qrs');
@@ -225,47 +231,28 @@ function setupEventListeners() {
   // Custom frame file selection trigger
   const frameTrigger = document.getElementById('upload-custom-trigger');
   const frameFileInput = document.getElementById('frame-file');
-  const frameTemplateInput = document.getElementById('frame-template');
-  const frameOptions = document.querySelectorAll('.frame-option');
 
-  frameTrigger.addEventListener('click', () => {
-    frameFileInput.click();
-  });
-
-  frameFileInput.addEventListener('change', (e) => {
-    if (e.target.files.length > 0) {
-      const file = e.target.files[0];
-      // Highlight custom frame selection
-      frameOptions.forEach(opt => opt.classList.remove('selected'));
-      frameTrigger.classList.add('selected');
-      
-      // Update badge
-      const badge = document.getElementById('custom-frame-badge');
-      badge.textContent = `បានជ្រើសរើស៖ ${file.name}`;
-      badge.classList.remove('hidden');
-      
-      // Set value in hidden input to indicate custom file
-      frameTemplateInput.value = 'custom';
-    }
-  });
-
-  // Handle preset frame template selection
-  frameOptions.forEach(option => {
-    if (option.id === 'upload-custom-trigger') return;
-    
-    option.addEventListener('click', () => {
-      frameOptions.forEach(opt => opt.classList.remove('selected'));
-      option.classList.add('selected');
-      frameTrigger.classList.remove('selected');
-      
-      // Clear file input
-      frameFileInput.value = '';
-      document.getElementById('custom-frame-badge').classList.add('hidden');
-      
-      // Update template hidden input
-      frameTemplateInput.value = option.dataset.template;
+  if (frameTrigger && frameFileInput) {
+    frameTrigger.addEventListener('click', () => {
+      frameFileInput.click();
     });
-  });
+
+    frameFileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        const file = e.target.files[0];
+        handleSidebarFrameUpload(file);
+      }
+    });
+  }
+
+  // Clear all frames link trigger
+  const clearAllLink = document.getElementById('sidebar-clear-all-frames');
+  if (clearAllLink) {
+    clearAllLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      deleteAllFrames();
+    });
+  }
 
   // Search input events (instant filtering)
   document.getElementById('search-qr').addEventListener('input', filterQRCodes);
@@ -658,10 +645,6 @@ async function handleCreateQR(e) {
     
     // Reset Form
     form.reset();
-    
-    // Reset Custom Selection
-    document.getElementById('frame-template').value = 'custom';
-    document.getElementById('custom-frame-badge').classList.add('hidden');
     
     // Fetch and redraw
     fetchData();
@@ -1668,3 +1651,211 @@ window.updateKeyNote = async function(keyVal, roleVal, spanEl) {
 }
 
 window.deleteSecurityKey = deleteSecurityKey;
+
+// ── Sidebar Photo Frames Management ──────────────────────────────────────────
+
+async function loadFramesData() {
+  try {
+    const res = await fetch('/api/frames', {
+      headers: {
+        'Authorization': getAuthKey(),
+        'X-Device-ID': getDeviceID()
+      }
+    });
+    if (res.status === 401) {
+      logout();
+      return;
+    }
+    if (!res.ok) throw new Error('Failed to fetch frames');
+    photoFrames = await res.json();
+    renderFrames();
+  } catch (err) {
+    console.error('Error loading frames:', err);
+  }
+}
+
+function renderFrames() {
+  const listContainer = document.getElementById('sidebar-frames-list');
+  if (!listContainer) return;
+  
+  listContainer.innerHTML = '';
+  
+  if (photoFrames.length === 0) {
+    listContainer.innerHTML = `
+      <div class="text-center" style="padding: 15px 0; color: var(--text-muted); font-size: 0.75rem;">
+        <i class="fa-regular fa-image" style="font-size: 1.5rem; margin-bottom: 5px; opacity: 0.5; display: block;"></i>
+        គ្មាន Frame ណាមួយឡើយ
+      </div>
+    `;
+    return;
+  }
+  
+  photoFrames.forEach(frame => {
+    const row = document.createElement('div');
+    row.className = 'sidebar-frame-row';
+    row.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid ${frame.is_active ? 'rgba(0, 242, 254, 0.4)' : 'rgba(255, 255, 255, 0.08)'};
+      background: ${frame.is_active ? 'rgba(0, 242, 254, 0.05)' : 'rgba(11, 7, 22, 0.3)'};
+      transition: all 0.2s ease;
+    `;
+    
+    row.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+        <!-- Active Checkbox/Tick Button -->
+        <button onclick="setActiveFrame(${frame.id})" style="background: none; border: none; cursor: pointer; color: ${frame.is_active ? '#00f2fe' : 'var(--text-muted)'}; font-size: 1.05rem; padding: 2px 6px; display: flex; align-items: center; transition: color 0.2s ease;">
+          <i class="${frame.is_active ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle'}"></i>
+        </button>
+        
+        <!-- Image Thumbnail -->
+        <img src="${frame.image_data}" style="width: 32px; height: 32px; object-fit: contain; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; flex-shrink: 0;">
+        
+        <!-- Filename -->
+        <div style="font-size: 0.78rem; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;" title="${escapeHTML(frame.name)}">
+          ${escapeHTML(frame.name)}
+        </div>
+      </div>
+      
+      <!-- Delete X Button -->
+      <button onclick="deleteSingleFrame(${frame.id})" style="background: none; border: none; cursor: pointer; color: var(--color-danger); opacity: 0.8; font-size: 0.95rem; padding: 4px 6px; display: flex; align-items: center; justify-content: center;" title="លុប">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    `;
+    listContainer.appendChild(row);
+  });
+}
+
+async function handleSidebarFrameUpload(file) {
+  const statusEl = document.getElementById('upload-status');
+  const uploadIcon = document.getElementById('upload-icon');
+  const uploadText = document.getElementById('upload-text');
+  
+  if (statusEl) statusEl.textContent = 'កំពុងបញ្ចូល...';
+  if (uploadIcon) {
+    uploadIcon.className = 'fa-solid fa-spinner fa-spin';
+    uploadIcon.style.color = '#00f2fe';
+  }
+  if (uploadText) uploadText.textContent = 'កំពុងបញ្ចូល...';
+  
+  const formData = new FormData();
+  formData.append('frame_file', file);
+  
+  try {
+    const res = await fetch('/api/frames', {
+      method: 'POST',
+      headers: {
+        'Authorization': getAuthKey(),
+        'X-Device-ID': getDeviceID()
+      },
+      body: formData
+    });
+    
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error || 'បញ្ចូល Frame បរាជ័យ!', 'error');
+      return;
+    }
+    
+    showToast('បានបញ្ចូល Photo Frame ដោយជោគជ័យ!', 'success');
+    await loadFramesData();
+  } catch (err) {
+    console.error('Sidebar upload error:', err);
+    showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
+  } finally {
+    const fileInput = document.getElementById('frame-file');
+    if (fileInput) fileInput.value = '';
+    
+    if (statusEl) statusEl.textContent = '';
+    if (uploadIcon) {
+      uploadIcon.className = 'fa-solid fa-cloud-arrow-up';
+      uploadIcon.style.color = '#00f2fe';
+    }
+    if (uploadText) uploadText.textContent = 'ចុចទីនេះ ដើម្បី Upload Frame';
+  }
+}
+
+async function deleteSingleFrame(id) {
+  if (!confirm('តើអ្នកពិតជាចង់លុប Photo Frame នេះមែនទេ?')) return;
+  
+  try {
+    const res = await fetch(`/api/frames/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': getAuthKey(),
+        'X-Device-ID': getDeviceID()
+      }
+    });
+    
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error || 'លុប Frame បរាជ័យ!', 'error');
+      return;
+    }
+    
+    showToast('បានលុប Frame រួចរាល់!', 'success');
+    await loadFramesData();
+  } catch (err) {
+    console.error('Delete frame error:', err);
+    showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
+  }
+}
+
+async function deleteAllFrames() {
+  if (photoFrames.length === 0) return;
+  if (!confirm('តើអ្នកពិតជាចង់លុប Photo Frames ទាំងអស់មែនទេ?')) return;
+  
+  try {
+    const res = await fetch('/api/frames/delete-all', {
+      method: 'POST',
+      headers: {
+        'Authorization': getAuthKey(),
+        'X-Device-ID': getDeviceID()
+      }
+    });
+    
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error || 'លុបបរាជ័យ!', 'error');
+      return;
+    }
+    
+    showToast('បានលុប Frame ទាំងអស់រួចរាល់!', 'success');
+    await loadFramesData();
+  } catch (err) {
+    console.error('Delete all frames error:', err);
+    showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
+  }
+}
+
+async function setActiveFrame(id) {
+  try {
+    const res = await fetch(`/api/frames/active/${id}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': getAuthKey(),
+        'X-Device-ID': getDeviceID()
+      }
+    });
+    
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error || 'កំណត់មិនបានជោគជ័យ!', 'error');
+      return;
+    }
+    
+    showToast('បានកំណត់យក Frame នេះមកប្រើប្រាស់!', 'success');
+    await loadFramesData();
+  } catch (err) {
+    console.error('Set active frame error:', err);
+    showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
+  }
+}
+
+window.setActiveFrame = setActiveFrame;
+window.deleteSingleFrame = deleteSingleFrame;
+window.loadFramesData = loadFramesData;
+window.handleSidebarFrameUpload = handleSidebarFrameUpload;
