@@ -4,6 +4,12 @@ import uuid
 import random
 import string
 import sqlite3
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    HAS_PG = True
+except ImportError:
+    HAS_PG = False
 import base64
 import threading
 from datetime import datetime
@@ -13,7 +19,7 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__, static_folder='public', static_url_path='')
 
 # ─── Configuration ────────────────────────────────────────────────────────────
-# DATA_DIR can be overridden by environment variable (useful for Render.com disk mount)
+DATABASE_URL = os.environ.get('DATABASE_URL') # Set this on Render.com
 DATA_DIR     = os.environ.get('DATA_DIR', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data'))
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public', 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'svg', 'webp'}
@@ -25,180 +31,171 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Global write lock — SQLite WAL handles concurrent reads, but we serialize writes
+# Lock for SQLite writes (only used in SQLite fallback mode)
 _db_lock = threading.Lock()
+
+# ─── Database Abstraction Layer ───────────────────────────────────────────────
+
+def get_db_connection():
+    """Returns a connection object. Supports PostgreSQL (Supabase) and SQLite."""
+    if DATABASE_URL and HAS_PG:
+        # PostgreSQL Connection
+        conn = psycopg2.connect(DATABASE_URL)
+        return conn
+    else:
+        # SQLite Fallback Connection
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
+
+def execute_query(query, params=(), commit=False, fetch_all=False, fetch_one=False):
+    """Executes a database query safely for both PostgreSQL and SQLite."""
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    
+    if not is_pg:
+        # Lock SQLite writes to prevent database lock issues
+        if commit:
+            _db_lock.acquire()
+            
+    conn = None
+    try:
+        conn = get_db_connection()
+        if is_pg:
+            # Use RealDictCursor so rows behave like dicts (just like sqlite3.Row)
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            cur = conn.cursor()
+            
+        cur.execute(query, params)
+        
+        result = None
+        if fetch_all:
+            result = cur.fetchall()
+            if not is_pg:
+                # Convert sqlite3.Row to standard dicts
+                result = [dict(r) for r in result]
+        elif fetch_one:
+            result = cur.fetchone()
+            if result and not is_pg:
+                result = dict(result)
+                
+        if commit:
+            conn.commit()
+            
+        return result
+    except Exception as e:
+        if conn and commit:
+            conn.rollback()
+        raise e
+    finally:
+        if conn:
+            conn.close()
+        if not is_pg and commit:
+            _db_lock.release()
 
 # ─── Database Bootstrap ───────────────────────────────────────────────────────
 
-def get_db():
-    """Open a new SQLite connection (row factory enabled, WAL mode)."""
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")   # Concurrent readers + single writer
-    conn.execute("PRAGMA foreign_keys=ON")
-    return conn
-
 def init_db():
-    """Create tables, then migrate from old JSON files if the DB is empty."""
-    with _db_lock, get_db() as conn:
-        conn.executescript("""
-            CREATE TABLE IF NOT EXISTS keys (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                key         TEXT    UNIQUE NOT NULL,
-                role        TEXT    NOT NULL,
-                max_devices INTEGER DEFAULT 5,
-                note        TEXT    DEFAULT '',
-                created_at  TEXT
-            );
-
-            CREATE TABLE IF NOT EXISTS devices (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                key_id        INTEGER NOT NULL REFERENCES keys(id) ON DELETE CASCADE,
-                device_id     TEXT    NOT NULL,
-                registered_at TEXT,
-                UNIQUE(key_id, device_id)
-            );
-
-            CREATE TABLE IF NOT EXISTS qrcodes (
-                id               TEXT PRIMARY KEY,
-                name             TEXT NOT NULL,
-                hashtag          TEXT DEFAULT '',
-                facebook_url     TEXT DEFAULT 'https://facebook.com',
-                tiktok_url       TEXT DEFAULT 'https://tiktok.com',
-                youtube_url      TEXT DEFAULT 'https://youtube.com',
-                frame_image      TEXT DEFAULT '',
-                frame_image_data TEXT DEFAULT '',
-                default_location TEXT DEFAULT '',
-                show_facebook    INTEGER DEFAULT 1,
-                show_tiktok      INTEGER DEFAULT 1,
-                show_youtube     INTEGER DEFAULT 1,
-                capture_location INTEGER DEFAULT 0,
-                created_at       TEXT
-            );
-
-            CREATE TABLE IF NOT EXISTS scans (
-                id        TEXT PRIMARY KEY,
-                qr_id     TEXT,
-                qr_name   TEXT,
-                name      TEXT,
-                phone     TEXT DEFAULT '',
-                location  TEXT,
-                latitude  TEXT,
-                longitude TEXT,
-                timestamp TEXT
-            );
-        """)
-
-        # Seed / migrate only when keys table is empty
-        count = conn.execute("SELECT COUNT(*) FROM keys").fetchone()[0]
-        if count == 0:
-            _migrate_from_json(conn)
-            count = conn.execute("SELECT COUNT(*) FROM keys").fetchone()[0]
-            if count == 0:
-                _seed_default_keys(conn)
-
-
-def _seed_default_keys(conn):
-    """Insert the default admin/mod/user keys on a fresh install."""
-    now = datetime.now().isoformat()
-    defaults = [
-        ('admin123', 'admin',     5, 'Admin Default'),
-        ('mod123',   'moderator', 5, 'Mod Default'),
-        ('user123',  'user',      5, 'User Default'),
+    """Creates the tables if they don't exist. Compatible with PG & SQLite."""
+    is_pg = bool(DATABASE_URL)
+    
+    # Text types: PG uses TEXT, SQLite uses TEXT. 
+    # Boolean representation: SQLite handles integers, PG handles BOOLEAN or INTEGER.
+    # We use INTEGER (0/1) for compatibility.
+    
+    # Auto increment syntax: SQLite uses AUTOINCREMENT, PG uses SERIAL
+    id_type = "SERIAL PRIMARY KEY" if is_pg else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    
+    queries = [
+        f"""
+        CREATE TABLE IF NOT EXISTS keys (
+            id          {id_type},
+            key         TEXT UNIQUE NOT NULL,
+            role        TEXT NOT NULL,
+            max_devices INTEGER DEFAULT 5,
+            note        TEXT DEFAULT '',
+            created_at  TEXT
+        );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS devices (
+            id            {id_type},
+            key_id        INTEGER NOT NULL REFERENCES keys(id) ON DELETE CASCADE,
+            device_id     TEXT NOT NULL,
+            registered_at TEXT,
+            UNIQUE(key_id, device_id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS qrcodes (
+            id               TEXT PRIMARY KEY,
+            name             TEXT NOT NULL,
+            hashtag          TEXT DEFAULT '',
+            facebook_url     TEXT DEFAULT 'https://facebook.com',
+            tiktok_url       TEXT DEFAULT 'https://tiktok.com',
+            youtube_url      TEXT DEFAULT 'https://youtube.com',
+            frame_image      TEXT DEFAULT '',
+            frame_image_data TEXT DEFAULT '',
+            default_location TEXT DEFAULT '',
+            show_facebook    INTEGER DEFAULT 1,
+            show_tiktok      INTEGER DEFAULT 1,
+            show_youtube     INTEGER DEFAULT 1,
+            capture_location INTEGER DEFAULT 0,
+            created_at       TEXT
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS scans (
+            id        TEXT PRIMARY KEY,
+            qr_id     TEXT,
+            qr_name   TEXT,
+            name      TEXT,
+            phone     TEXT DEFAULT '',
+            location  TEXT,
+            latitude  TEXT,
+            longitude TEXT,
+            timestamp TEXT
+        );
+        """
     ]
-    for key, role, max_dev, note in defaults:
-        conn.execute(
-            "INSERT OR IGNORE INTO keys (key, role, max_devices, note, created_at) VALUES (?,?,?,?,?)",
-            (key, role, max_dev, note, now)
-        )
+    
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        for q in queries:
+            cur.execute(q)
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print(f"Database bootstrap failed: {e}")
+    finally:
+        conn.close()
 
+    # Seed default values if empty
+    check_empty_query = "SELECT COUNT(*) FROM keys"
+    count = execute_query(check_empty_query, fetch_one=True)
+    
+    # Handle dict check (sqlite3 Row vs postgres dict)
+    count_val = list(count.values())[0] if isinstance(count, dict) else count[0]
+    
+    if count_val == 0:
+        now = datetime.now().isoformat()
+        defaults = [
+            ('admin123', 'admin', 5, 'Admin Default'),
+            ('mod123', 'moderator', 5, 'Mod Default'),
+            ('user123', 'user', 5, 'User Default'),
+        ]
+        for key, role, max_dev, note in defaults:
+            execute_query(
+                "INSERT INTO keys (key, role, max_devices, note, created_at) VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING" if is_pg else
+                "INSERT OR IGNORE INTO keys (key, role, max_devices, note, created_at) VALUES (?, ?, ?, ?, ?)",
+                (key, role, max_dev, note, now), commit=True
+            )
+        print("✓ Database seeded with default keys.")
 
-def _migrate_from_json(conn):
-    """One-time migration: import existing JSON files → SQLite."""
-    now = datetime.now().isoformat()
-
-    # ── keys.json ──────────────────────────────────────────────────────────────
-    keys_file = os.path.join(DATA_DIR, 'keys.json')
-    if os.path.exists(keys_file):
-        try:
-            with open(keys_file, 'r', encoding='utf-8') as f:
-                kd = json.load(f)
-            for group, role in [('admin_keys', 'admin'), ('moderator_keys', 'moderator'), ('user_keys', 'user')]:
-                for item in kd.get(group, []):
-                    if isinstance(item, str):
-                        item = {'key': item, 'max_devices': 5, 'devices': [], 'note': ''}
-                    k = item.get('key', '')
-                    if not k:
-                        continue
-                    conn.execute(
-                        "INSERT OR IGNORE INTO keys (key, role, max_devices, note, created_at) VALUES (?,?,?,?,?)",
-                        (k, role, item.get('max_devices', 5), item.get('note', ''), now)
-                    )
-                    row = conn.execute("SELECT id FROM keys WHERE key=?", (k,)).fetchone()
-                    if row:
-                        for did in item.get('devices', []):
-                            conn.execute(
-                                "INSERT OR IGNORE INTO devices (key_id, device_id, registered_at) VALUES (?,?,?)",
-                                (row[0], did, now)
-                            )
-            print("[OK] Migrated keys.json -> SQLite")
-        except Exception as e:
-            print("[ERROR] keys.json migration error: " + str(e))
-
-    # ── qrcodes.json ───────────────────────────────────────────────────────────
-    qrcodes_file = os.path.join(DATA_DIR, 'qrcodes.json')
-    if os.path.exists(qrcodes_file):
-        try:
-            with open(qrcodes_file, 'r', encoding='utf-8') as f:
-                qrcodes = json.load(f)
-            for q in qrcodes:
-                conn.execute("""
-                    INSERT OR IGNORE INTO qrcodes
-                        (id, name, hashtag, facebook_url, tiktok_url, youtube_url,
-                         frame_image, default_location,
-                         show_facebook, show_tiktok, show_youtube, capture_location, created_at)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-                """, (
-                    q.get('id', ''), q.get('name', ''), q.get('hashtag', ''),
-                    q.get('facebook_url', 'https://facebook.com'),
-                    q.get('tiktok_url',   'https://tiktok.com'),
-                    q.get('youtube_url',  'https://youtube.com'),
-                    q.get('frame_image',  ''),
-                    q.get('default_location', ''),
-                    1 if q.get('show_facebook', True)    else 0,
-                    1 if q.get('show_tiktok',   True)    else 0,
-                    1 if q.get('show_youtube',  True)    else 0,
-                    1 if q.get('capture_location', False) else 0,
-                    q.get('created_at', now)
-                ))
-            print("[OK] Migrated qrcodes.json -> SQLite")
-        except Exception as e:
-            print("[ERROR] qrcodes.json migration error: " + str(e))
-
-    # ── scans.json ─────────────────────────────────────────────────────────────
-    scans_file = os.path.join(DATA_DIR, 'scans.json')
-    if os.path.exists(scans_file):
-        try:
-            with open(scans_file, 'r', encoding='utf-8') as f:
-                scans = json.load(f)
-            for s in scans:
-                conn.execute("""
-                    INSERT OR IGNORE INTO scans
-                        (id, qr_id, qr_name, name, phone, location, latitude, longitude, timestamp)
-                    VALUES (?,?,?,?,?,?,?,?,?)
-                """, (
-                    s.get('id', uuid.uuid4().hex[:12]),
-                    s.get('qr_id', ''), s.get('qr_name', ''), s.get('name', ''),
-                    s.get('phone', ''), s.get('location', ''),
-                    str(s.get('latitude', '')), str(s.get('longitude', '')),
-                    s.get('timestamp', now)
-                ))
-            print("[OK] Migrated scans.json -> SQLite")
-        except Exception as e:
-            print("[ERROR] scans.json migration error: " + str(e))
-
-
-# Run DB init at startup
+# Run init DB
 init_db()
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -210,30 +207,28 @@ def generate_random_key():
     p3 = ''.join(random.choices(chars, k=3))
     return f"{p1}-{p2}-{p3}"
 
-
 def get_role_and_status(key, device_id=None):
     """Return (role, status) for a given key and optional device_id."""
     if not key:
         return None, 'missing_key'
-    with get_db() as conn:
-        row = conn.execute(
-            "SELECT id, role, max_devices FROM keys WHERE key=?", (key,)
-        ).fetchone()
-        if not row:
-            return None, 'invalid_key'
-        if device_id:
-            already = conn.execute(
-                "SELECT 1 FROM devices WHERE key_id=? AND device_id=?",
-                (row['id'], device_id)
-            ).fetchone()
-            if not already:
-                dev_count = conn.execute(
-                    "SELECT COUNT(*) FROM devices WHERE key_id=?", (row['id'],)
-                ).fetchone()[0]
-                if dev_count >= row['max_devices']:
-                    return None, 'limit_exceeded'
+        
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_key = "SELECT id, role, max_devices FROM keys WHERE key = %s" if is_pg else "SELECT id, role, max_devices FROM keys WHERE key = ?"
+    row = execute_query(q_key, (key,), fetch_one=True)
+    if not row:
+        return None, 'invalid_key'
+        
+    if device_id:
+        q_dev = "SELECT 1 FROM devices WHERE key_id = %s AND device_id = %s" if is_pg else "SELECT 1 FROM devices WHERE key_id = ? AND device_id = ?"
+        already = execute_query(q_dev, (row['id'], device_id), fetch_one=True)
+        if not already:
+            q_cnt = "SELECT COUNT(*) FROM devices WHERE key_id = %s" if is_pg else "SELECT COUNT(*) FROM devices WHERE key_id = ?"
+            dev_count = execute_query(q_cnt, (row['id'],), fetch_one=True)
+            dev_count_val = list(dev_count.values())[0] if isinstance(dev_count, dict) else dev_count[0]
+            if dev_count_val >= row['max_devices']:
+                return None, 'limit_exceeded'
+                
     return row['role'], 'ok'
-
 
 def get_role_by_key(key):
     """Authenticate a key, register device if new, return role or None."""
@@ -244,22 +239,23 @@ def get_role_by_key(key):
         pass
     role, _ = get_role_and_status(key, device_id)
     if role and device_id:
-        with _db_lock, get_db() as conn:
-            row = conn.execute("SELECT id FROM keys WHERE key=?", (key,)).fetchone()
-            if row:
-                conn.execute(
-                    "INSERT OR IGNORE INTO devices (key_id, device_id, registered_at) VALUES (?,?,?)",
-                    (row['id'], device_id, datetime.now().isoformat())
-                )
+        is_pg = bool(DATABASE_URL and HAS_PG)
+        q_key = "SELECT id FROM keys WHERE key = %s" if is_pg else "SELECT id FROM keys WHERE key = ?"
+        row = execute_query(q_key, (key,), fetch_one=True)
+        if row:
+            now = datetime.now().isoformat()
+            execute_query(
+                "INSERT INTO devices (key_id, device_id, registered_at) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING" if is_pg else
+                "INSERT OR IGNORE INTO devices (key_id, device_id, registered_at) VALUES (?, ?, ?)",
+                (row['id'], device_id, now), commit=True
+            )
     return role
-
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
 def file_to_base64(file_obj, ext):
-    """Convert an uploaded file to a Base64 data URI (survives server restarts)."""
+    """Convert an uploaded file to a Base64 data URI."""
     mime_map = {
         'png':  'image/png',
         'jpg':  'image/jpeg',
@@ -271,19 +267,16 @@ def file_to_base64(file_obj, ext):
     data = base64.b64encode(file_obj.read()).decode('utf-8')
     return f"data:{mime};base64,{data}"
 
-
 # ─── Routes ───────────────────────────────────────────────────────────────────
 
 @app.route('/')
 def index():
     return send_from_directory(app.static_folder, 'admin.html')
 
-
-# Keep-alive endpoint — pinged every 10 min by admin page to prevent Render sleep
+# Keep-alive endpoint
 @app.route('/ping')
 def ping():
     return jsonify({'status': 'ok', 'time': datetime.now().isoformat()})
-
 
 # ── QR Codes ──────────────────────────────────────────────────────────────────
 
@@ -294,21 +287,24 @@ def get_qrcodes():
     if not role:
         return jsonify({'error': 'សិទ្ធិចូលប្រើប្រាស់មិនត្រឹមត្រូវ!'}), 401
 
-    with get_db() as conn:
-        rows = conn.execute("SELECT * FROM qrcodes").fetchall()
-        result = []
-        for row in rows:
-            q = dict(row)
-            q['show_facebook']    = bool(q['show_facebook'])
-            q['show_tiktok']      = bool(q['show_tiktok'])
-            q['show_youtube']     = bool(q['show_youtube'])
-            q['capture_location'] = bool(q['capture_location'])
-            q['scan_count'] = conn.execute(
-                "SELECT COUNT(*) FROM scans WHERE qr_id=?", (q['id'],)
-            ).fetchone()[0]
-            result.append(q)
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    rows = execute_query("SELECT * FROM qrcodes", fetch_all=True)
+    result = []
+    
+    for row in rows:
+        q = dict(row)
+        q['show_facebook']    = bool(q['show_facebook'])
+        q['show_tiktok']      = bool(q['show_tiktok'])
+        q['show_youtube']     = bool(q['show_youtube'])
+        q['capture_location'] = bool(q['capture_location'])
+        
+        q_cnt = "SELECT COUNT(*) FROM scans WHERE qr_id = %s" if is_pg else "SELECT COUNT(*) FROM scans WHERE qr_id = ?"
+        scan_count = execute_query(q_cnt, (q['id'],), fetch_one=True)
+        scan_count_val = list(scan_count.values())[0] if isinstance(scan_count, dict) else scan_count[0]
+        q['scan_count'] = scan_count_val
+        result.append(q)
+        
     return jsonify(result)
-
 
 @app.route('/api/qrcodes', methods=['POST'])
 def create_qrcode():
@@ -332,9 +328,10 @@ def create_qrcode():
     if not qr_id or not name:
         return jsonify({'error': 'មេត្តាបញ្ចូល Sales Team និង Depot!'}), 400
 
-    with get_db() as conn:
-        if conn.execute("SELECT 1 FROM qrcodes WHERE id=?", (qr_id,)).fetchone():
-            return jsonify({'error': 'Sales Team នេះមានរួចហើយ ករុណាជ្រើសរើសផ្សេង!'}), 400
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_chk = "SELECT 1 FROM qrcodes WHERE id = %s" if is_pg else "SELECT 1 FROM qrcodes WHERE id = ?"
+    if execute_query(q_chk, (qr_id,), fetch_one=True):
+        return jsonify({'error': 'Sales Team នេះមានរួចហើយ ករុណាជ្រើសរើសផ្សេង!'}), 400
 
     frame_image      = ''
     frame_image_data = ''
@@ -350,18 +347,25 @@ def create_qrcode():
         frame_image = request.form.get('frame_template', 'default_frame.png')
 
     now = datetime.now().isoformat()
-    with _db_lock, get_db() as conn:
-        conn.execute("""
-            INSERT INTO qrcodes
-                (id, name, hashtag, facebook_url, tiktok_url, youtube_url,
-                 frame_image, frame_image_data, default_location,
-                 show_facebook, show_tiktok, show_youtube, capture_location, created_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """, (
-            qr_id, name, hashtag, facebook_url, tiktok_url, youtube_url,
-            frame_image, frame_image_data, default_location,
-            show_facebook, show_tiktok, show_youtube, capture_location, now
-        ))
+    q_ins = """
+        INSERT INTO qrcodes
+            (id, name, hashtag, facebook_url, tiktok_url, youtube_url,
+             frame_image, frame_image_data, default_location,
+             show_facebook, show_tiktok, show_youtube, capture_location, created_at)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    """ if is_pg else """
+        INSERT INTO qrcodes
+            (id, name, hashtag, facebook_url, tiktok_url, youtube_url,
+             frame_image, frame_image_data, default_location,
+             show_facebook, show_tiktok, show_youtube, capture_location, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    """
+    
+    execute_query(q_ins, (
+        qr_id, name, hashtag, facebook_url, tiktok_url, youtube_url,
+        frame_image, frame_image_data, default_location,
+        show_facebook, show_tiktok, show_youtube, capture_location, now
+    ), commit=True)
 
     return jsonify({
         'id': qr_id, 'name': name, 'hashtag': hashtag,
@@ -373,7 +377,6 @@ def create_qrcode():
         'created_at': now, 'scan_count': 0
     }), 201
 
-
 @app.route('/api/qrcodes/<string:qr_id>', methods=['DELETE'])
 def delete_qrcode(qr_id):
     auth_key = request.headers.get('Authorization')
@@ -381,21 +384,31 @@ def delete_qrcode(qr_id):
     if role not in ['admin', 'moderator']:
         return jsonify({'error': 'គ្មានសិទ្ធិលុប QR Code ឡើយ!'}), 403
 
-    with _db_lock, get_db() as conn:
-        result = conn.execute("DELETE FROM qrcodes WHERE id=?", (qr_id,))
-        if result.rowcount == 0:
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_del = "DELETE FROM qrcodes WHERE id = %s" if is_pg else "DELETE FROM qrcodes WHERE id = ?"
+    
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(q_del, (qr_id,))
+        rowcount = cur.rowcount
+        conn.commit()
+        if rowcount == 0:
             return jsonify({'error': 'រកមិនឃើញ QR Code នេះទេ!'}), 404
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': f'Database error: {e}'}), 500
+    finally:
+        conn.close()
 
     return jsonify({'message': 'បានលុប QR Code ដោយជោគជ័យ!'})
 
-
-# Serve frame image from SQLite Base64 (works after Render restart)
+# Serve frame image from DB Base64
 @app.route('/api/frame-image/<qr_id>')
 def get_frame_image(qr_id):
-    with get_db() as conn:
-        row = conn.execute(
-            "SELECT frame_image_data FROM qrcodes WHERE id=?", (qr_id,)
-        ).fetchone()
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_sel = "SELECT frame_image_data, frame_image FROM qrcodes WHERE id = %s" if is_pg else "SELECT frame_image_data, frame_image FROM qrcodes WHERE id = ?"
+    row = execute_query(q_sel, (qr_id,), fetch_one=True)
 
     if row and row['frame_image_data']:
         data_uri = row['frame_image_data']
@@ -406,18 +419,12 @@ def get_frame_image(qr_id):
             return Response(img_bytes, mimetype=mime,
                             headers={'Cache-Control': 'public, max-age=86400'})
 
-    # Fallback: try static file (local dev)
-    try:
-        with get_db() as conn:
-            row = conn.execute(
-                "SELECT frame_image FROM qrcodes WHERE id=?", (qr_id,)
-            ).fetchone()
-        if row and row['frame_image']:
+    if row and row['frame_image']:
+        try:
             return send_from_directory(app.config['UPLOAD_FOLDER'], row['frame_image'])
-    except Exception:
-        pass
+        except Exception:
+            pass
     return '', 404
-
 
 # ── Scans ─────────────────────────────────────────────────────────────────────
 
@@ -428,10 +435,8 @@ def get_scans():
     if not role:
         return jsonify({'error': 'សិទ្ធិចូលប្រើប្រាស់មិនត្រឹមត្រូវ!'}), 401
 
-    with get_db() as conn:
-        rows = conn.execute("SELECT * FROM scans ORDER BY timestamp DESC").fetchall()
-    return jsonify([dict(r) for r in rows])
-
+    rows = execute_query("SELECT * FROM scans ORDER BY timestamp DESC", fetch_all=True)
+    return jsonify(rows)
 
 @app.route('/api/scans/<log_id>', methods=['DELETE'])
 def delete_scan(log_id):
@@ -440,13 +445,24 @@ def delete_scan(log_id):
     if role not in ['admin', 'moderator']:
         return jsonify({'error': 'គ្មានសិទ្ធិលុប Log ឡើយ!'}), 403
 
-    with _db_lock, get_db() as conn:
-        result = conn.execute("DELETE FROM scans WHERE id=?", (log_id,))
-        if result.rowcount == 0:
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_del = "DELETE FROM scans WHERE id = %s" if is_pg else "DELETE FROM scans WHERE id = ?"
+    
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(q_del, (log_id,))
+        rowcount = cur.rowcount
+        conn.commit()
+        if rowcount == 0:
             return jsonify({'error': 'រកមិនឃើញទិន្នន័យស្កេននេះឡើយ!'}), 404
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': f'Database error: {e}'}), 500
+    finally:
+        conn.close()
 
     return jsonify({'message': 'បានលុបទិន្នន័យស្កេនដោយជោគជ័យ!'})
-
 
 @app.route('/api/scans/delete-batch', methods=['POST'])
 def delete_scans_batch():
@@ -460,12 +476,23 @@ def delete_scans_batch():
     if not log_ids:
         return jsonify({'error': 'គ្មានទិន្នន័យសម្រាប់លុបឡើយ!'}), 400
 
-    placeholders = ','.join(['?'] * len(log_ids))
-    with _db_lock, get_db() as conn:
-        result = conn.execute(f"DELETE FROM scans WHERE id IN ({placeholders})", log_ids)
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    placeholders = ','.join(['%s' if is_pg else '?'] * len(log_ids))
+    q_del = f"DELETE FROM scans WHERE id IN ({placeholders})"
+    
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(q_del, log_ids)
+        rowcount = cur.rowcount
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': f'Database error: {e}'}), 500
+    finally:
+        conn.close()
 
-    return jsonify({'message': f'បានលុបទិន្នន័យស្កេនចំនួន {result.rowcount} ជោគជ័យ!'})
-
+    return jsonify({'message': f'បានលុបទិន្នន័យស្កេនចំនួន {rowcount} ជោគជ័យ!'})
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -482,18 +509,17 @@ def auth_login():
         return jsonify({'error': 'លេខកូដសម្ងាត់មិនត្រឹមត្រូវឡើយ!'}), 401
 
     note = ''
-    with _db_lock, get_db() as conn:
-        row = conn.execute("SELECT id, note FROM keys WHERE key=?", (key,)).fetchone()
-        if row:
-            note = row['note'] or ''
-            if device_id:
-                conn.execute(
-                    "INSERT OR IGNORE INTO devices (key_id, device_id, registered_at) VALUES (?,?,?)",
-                    (row['id'], device_id, datetime.now().isoformat())
-                )
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_key = "SELECT id, note FROM keys WHERE key = %s" if is_pg else "SELECT id, note FROM keys WHERE key = ?"
+    row = execute_query(q_key, (key,), fetch_one=True)
+    if row:
+        note = row['note'] or ''
+        if device_id:
+            now = datetime.now().isoformat()
+            q_ins = "INSERT INTO devices (key_id, device_id, registered_at) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING" if is_pg else "INSERT OR IGNORE INTO devices (key_id, device_id, registered_at) VALUES (?, ?, ?)"
+            execute_query(q_ins, (row['id'], device_id, now), commit=True)
 
     return jsonify({'role': role, 'note': note, 'message': 'ចូលប្រព័ន្ធបានជោគជ័យ!'})
-
 
 @app.route('/api/auth/keys', methods=['GET'])
 def get_auth_keys():
@@ -504,29 +530,42 @@ def get_auth_keys():
 
     result        = {'admin_keys': [], 'moderator_keys': [], 'user_keys': []}
     roles_to_show = ['admin', 'moderator', 'user'] if role == 'admin' else ['moderator', 'user']
+    is_pg = bool(DATABASE_URL and HAS_PG)
 
-    with get_db() as conn:
+    with get_db_connection() as conn:
+        if is_pg:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            cur = conn.cursor()
+            
         for r in roles_to_show:
-            rows = conn.execute(
-                "SELECT id, key, role, max_devices, note FROM keys WHERE role=?", (r,)
-            ).fetchall()
+            q_key = "SELECT id, key, role, max_devices, note FROM keys WHERE role = %s" if is_pg else "SELECT id, key, role, max_devices, note FROM keys WHERE role = ?"
+            cur.execute(q_key, (r,))
+            rows = cur.fetchall()
+            
             for row in rows:
-                devices = [
-                    d['device_id']
-                    for d in conn.execute(
-                        "SELECT device_id FROM devices WHERE key_id=?", (row['id'],)
-                    ).fetchall()
-                ]
+                if not is_pg:
+                    row = dict(row)
+                
+                # Fetch devices
+                q_dev = "SELECT device_id FROM devices WHERE key_id = %s" if is_pg else "SELECT device_id FROM devices WHERE key_id = ?"
+                # Temporary new cursor for devices
+                dev_cur = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
+                dev_cur.execute(q_dev, (row['id'],))
+                dev_rows = dev_cur.fetchall()
+                dev_cur.close()
+                
+                devices = [d['device_id'] if is_pg else d[0] for d in dev_rows]
+                
                 result[f"{r}_keys"].append({
                     'key':         row['key'],
                     'role':        row['role'],
                     'max_devices': row['max_devices'],
-                    'note':        row['note'],
+                    'note':        row['note'] or '',
                     'devices':     devices,
                 })
 
     return jsonify(result)
-
 
 @app.route('/api/auth/keys/add', methods=['POST'])
 def add_auth_key():
@@ -546,22 +585,23 @@ def add_auth_key():
     if target_role in ['admin', 'moderator'] and role != 'admin':
         return jsonify({'error': 'មានតែ Admin ទេដែលអាចបន្ថែម Key កម្រិតនេះបាន!'}), 403
 
-    with _db_lock, get_db() as conn:
-        if new_key:
-            if conn.execute("SELECT 1 FROM keys WHERE key=?", (new_key,)).fetchone():
-                return jsonify({'error': 'លេខកូដសម្ងាត់នេះមានក្នុងប្រព័ន្ធរួចហើយ!'}), 400
-        else:
-            while True:
-                new_key = generate_random_key()
-                if not conn.execute("SELECT 1 FROM keys WHERE key=?", (new_key,)).fetchone():
-                    break
-        conn.execute(
-            "INSERT INTO keys (key, role, max_devices, note, created_at) VALUES (?,?,?,?,?)",
-            (new_key, target_role, max_devices, note, datetime.now().isoformat())
-        )
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_chk = "SELECT 1 FROM keys WHERE key = %s" if is_pg else "SELECT 1 FROM keys WHERE key = ?"
+    
+    if new_key:
+        if execute_query(q_chk, (new_key,), fetch_one=True):
+            return jsonify({'error': 'លេខកូដសម្ងាត់នេះមានក្នុងប្រព័ន្ធរួចហើយ!'}), 400
+    else:
+        while True:
+            new_key = generate_random_key()
+            if not execute_query(q_chk, (new_key,), fetch_one=True):
+                break
+                
+    now = datetime.now().isoformat()
+    q_ins = "INSERT INTO keys (key, role, max_devices, note, created_at) VALUES (%s, %s, %s, %s, %s)" if is_pg else "INSERT INTO keys (key, role, max_devices, note, created_at) VALUES (?, ?, ?, ?, ?)"
+    execute_query(q_ins, (new_key, target_role, max_devices, note, now), commit=True)
 
     return jsonify({'message': f'បានបន្ថែម Key សម្រាប់ {target_role} ដោយជោគជ័យ!', 'key': new_key})
-
 
 @app.route('/api/auth/keys/delete', methods=['POST'])
 def delete_auth_key():
@@ -577,22 +617,22 @@ def delete_auth_key():
     if not target_key or target_role not in ['admin', 'moderator', 'user']:
         return jsonify({'error': 'ទិន្នន័យមិនត្រឹមត្រូវ!'}), 400
 
-    with _db_lock, get_db() as conn:
-        row = conn.execute(
-            "SELECT id FROM keys WHERE key=? AND role=?", (target_key, target_role)
-        ).fetchone()
-        if not row:
-            return jsonify({'error': 'រកមិនឃើញ Key នេះក្នុងប្រព័ន្ធឡើយ!'}), 404
-        if target_role == 'admin':
-            admin_count = conn.execute(
-                "SELECT COUNT(*) FROM keys WHERE role='admin'"
-            ).fetchone()[0]
-            if admin_count <= 1:
-                return jsonify({'error': 'មិនអាចលុប Admin Key ចុងក្រោយបានទេ!'}), 400
-        conn.execute("DELETE FROM keys WHERE id=?", (row['id'],))
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_sel = "SELECT id FROM keys WHERE key = %s AND role = %s" if is_pg else "SELECT id FROM keys WHERE key = ? AND role = ?"
+    row = execute_query(q_sel, (target_key, target_role), fetch_one=True)
+    if not row:
+        return jsonify({'error': 'រកមិនឃើញ Key នេះក្នុងប្រព័ន្ធឡើយ!'}), 404
+        
+    if target_role == 'admin':
+        admin_count = execute_query("SELECT COUNT(*) FROM keys WHERE role = 'admin'", fetch_one=True)
+        admin_count_val = list(admin_count.values())[0] if isinstance(admin_count, dict) else admin_count[0]
+        if admin_count_val <= 1:
+            return jsonify({'error': 'មិនអាចលុប Admin Key ចុងក្រោយបានទេ!'}), 400
+            
+    q_del = "DELETE FROM keys WHERE id = %s" if is_pg else "DELETE FROM keys WHERE id = ?"
+    execute_query(q_del, (row['id'],), commit=True)
 
     return jsonify({'message': 'បានលុប Key ដោយជោគជ័យ!'})
-
 
 @app.route('/api/auth/keys/reset-devices', methods=['POST'])
 def reset_auth_key_devices():
@@ -610,16 +650,16 @@ def reset_auth_key_devices():
     if role == 'moderator' and target_role != 'user':
         return jsonify({'error': 'Moderator អាចលុប/reset ឧបករណ៍បានតែរបស់ User Key ប៉ុណ្ណោះ!'}), 403
 
-    with _db_lock, get_db() as conn:
-        row = conn.execute(
-            "SELECT id FROM keys WHERE key=? AND role=?", (target_key, target_role)
-        ).fetchone()
-        if not row:
-            return jsonify({'error': 'រកមិនឃើញ Key នេះក្នុងប្រព័ន្ធឡើយ!'}), 404
-        conn.execute("DELETE FROM devices WHERE key_id=?", (row['id'],))
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_sel = "SELECT id FROM keys WHERE key = %s AND role = %s" if is_pg else "SELECT id FROM keys WHERE key = ? AND role = ?"
+    row = execute_query(q_sel, (target_key, target_role), fetch_one=True)
+    if not row:
+        return jsonify({'error': 'រកមិនឃើញ Key នេះក្នុងប្រព័ន្ធឡើយ!'}), 404
+        
+    q_del = "DELETE FROM devices WHERE key_id = %s" if is_pg else "DELETE FROM devices WHERE key_id = ?"
+    execute_query(q_del, (row['id'],), commit=True)
 
     return jsonify({'message': 'បានសម្អាតឧបករណ៍ទាំងអស់ដោយជោគជ័យ!'})
-
 
 @app.route('/api/auth/keys/update-limit', methods=['POST'])
 def update_auth_key_limit():
@@ -638,16 +678,24 @@ def update_auth_key_limit():
     if role == 'moderator' and target_role != 'user':
         return jsonify({'error': 'Moderator អាចកែប្រែចំនួនឧបករណ៍បានតែរបស់ User Key ប៉ុណ្ណោះ!'}), 403
 
-    with _db_lock, get_db() as conn:
-        result = conn.execute(
-            "UPDATE keys SET max_devices=? WHERE key=? AND role=?",
-            (max_devices, target_key, target_role)
-        )
-        if result.rowcount == 0:
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_upd = "UPDATE keys SET max_devices = %s WHERE key = %s AND role = %s" if is_pg else "UPDATE keys SET max_devices = ? WHERE key = ? AND role = ?"
+    
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(q_upd, (max_devices, target_key, target_role))
+        rowcount = cur.rowcount
+        conn.commit()
+        if rowcount == 0:
             return jsonify({'error': 'រកមិនឃើញ Key នេះក្នុងប្រព័ន្ធឡើយ!'}), 404
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': f'Database error: {e}'}), 500
+    finally:
+        conn.close()
 
     return jsonify({'message': 'បានកែប្រែចំនួនឧបករណ៍ជោគជ័យ!'})
-
 
 @app.route('/api/auth/keys/update-note', methods=['POST'])
 def update_auth_key_note():
@@ -666,16 +714,24 @@ def update_auth_key_note():
     if role == 'moderator' and target_role != 'user':
         return jsonify({'error': 'Moderator អាចកែប្រែឈ្មោះបានតែរបស់ User Key ប៉ុណ្ណោះ!'}), 403
 
-    with _db_lock, get_db() as conn:
-        result = conn.execute(
-            "UPDATE keys SET note=? WHERE key=? AND role=?",
-            (new_note, target_key, target_role)
-        )
-        if result.rowcount == 0:
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_upd = "UPDATE keys SET note = %s WHERE key = %s AND role = %s" if is_pg else "UPDATE keys SET note = ? WHERE key = ? AND role = ?"
+    
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(q_upd, (new_note, target_key, target_role))
+        rowcount = cur.rowcount
+        conn.commit()
+        if rowcount == 0:
             return jsonify({'error': 'រកមិនឃើញ Key នេះក្នុងប្រព័ន្ធឡើយ!'}), 404
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': f'Database error: {e}'}), 500
+    finally:
+        conn.close()
 
     return jsonify({'message': 'បានកែប្រែឈ្មោះដោយជោគជ័យ!'})
-
 
 # ── Scan Record ───────────────────────────────────────────────────────────────
 
@@ -692,10 +748,9 @@ def record_scan():
     if not qr_id or not name or not location:
         return jsonify({'error': 'មេត្តាបំពេញព័ត៌មានអោយបានគ្រប់គ្រាន់!'}), 400
 
-    with get_db() as conn:
-        qr_row = conn.execute(
-            "SELECT name FROM qrcodes WHERE id=?", (qr_id,)
-        ).fetchone()
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_chk = "SELECT name FROM qrcodes WHERE id = %s" if is_pg else "SELECT name FROM qrcodes WHERE id = ?"
+    qr_row = execute_query(q_chk, (qr_id,), fetch_one=True)
 
     if not qr_row and qr_id != 'test_qr':
         return jsonify({'error': 'QR Code មិនត្រឹមត្រូវ ឬត្រូវបានលុបចោល!'}), 404
@@ -704,19 +759,24 @@ def record_scan():
     scan_id = uuid.uuid4().hex[:12]
     now     = datetime.now().isoformat()
 
-    with _db_lock, get_db() as conn:
-        conn.execute("""
-            INSERT INTO scans (id, qr_id, qr_name, name, phone, location, latitude, longitude, timestamp)
-            VALUES (?,?,?,?,?,?,?,?,?)
-        """, (scan_id, qr_id, qr_name, name, phone, location,
-               str(latitude or ''), str(longitude or ''), now))
+    q_ins = """
+        INSERT INTO scans (id, qr_id, qr_name, name, phone, location, latitude, longitude, timestamp)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    """ if is_pg else """
+        INSERT INTO scans (id, qr_id, qr_name, name, phone, location, latitude, longitude, timestamp)
+        VALUES (?,?,?,?,?,?,?,?,?)
+    """
+    
+    execute_query(q_ins, (
+        scan_id, qr_id, qr_name, name, phone, location,
+        str(latitude or ''), str(longitude or ''), now
+    ), commit=True)
 
     return jsonify({
         'id': scan_id, 'qr_id': qr_id, 'qr_name': qr_name,
         'name': name, 'phone': phone, 'location': location,
         'latitude': latitude, 'longitude': longitude, 'timestamp': now
     }), 201
-
 
 # ── Server Info ───────────────────────────────────────────────────────────────
 
@@ -731,7 +791,6 @@ def server_info():
     except Exception:
         ip = "127.0.0.1"
     return jsonify({'local_ip': ip, 'port': 5000})
-
 
 # ─── Entry Point ──────────────────────────────────────────────────────────────
 
