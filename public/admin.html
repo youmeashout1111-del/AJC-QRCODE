@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ផ្ទាំងគ្រប់គ្រង QR Code & តាមដានការ Scan - AJC</title>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/style.css">
+  
+  <!-- SheetJS Library for Excel exporting -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <style>
+    .login-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at center, #1b0a2d 0%, #080310 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      padding: 20px;
+    }
+    .login-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Login Overlay -->
+  <div id="login-overlay" class="login-overlay">
+    <div class="glass-panel login-card" style="width: 100%; max-width: 400px; padding: 30px; text-align: center; border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 15px 35px rgba(0,0,0,0.5);">
+      <div style="font-size: 3rem; color: #00f2fe; margin-bottom: 15px; text-shadow: 0 0 20px rgba(0, 242, 254, 0.5);">
+        <i class="fa-solid fa-shield-halved"></i>
+      </div>
+      <h2 style="font-size: 1.5rem; margin-bottom: 8px; color: #fff;">ផ្ទៀងផ្ទាត់សិទ្ធិចូលប្រើប្រាស់</h2>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 25px;">សូមវាយបញ្ចូលលេខកូដសម្ងាត់ (Security Key) ដើម្បីបើកផ្ទាំងគ្រប់គ្រង</p>
+      
+      <form id="login-form">
+        <div class="form-group" style="text-align: left; margin-bottom: 20px;">
+          <label for="security-key-input" style="font-size: 0.85rem; margin-bottom: 8px;">លេខកូដសម្ងាត់ (Key) *</label>
+          <div style="position: relative;">
+            <input type="password" id="security-key-input" placeholder="វាយបញ្ចូលលេខកូដសម្ងាត់..." required style="padding-left: 40px; margin-bottom: 0; width: 100%; height: 42px; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff;">
+            <i class="fa-solid fa-key" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1rem; height: 45px; background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); box-shadow: 0 5px 15px rgba(0, 242, 254, 0.35);">
+          <i class="fa-solid fa-right-to-bracket"></i> ចូលប្រព័ន្ធ
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="admin-container">
+    
+    <!-- Header -->
+    <header class="admin-header">
+      <div class="admin-logo">
+        <i class="fa-solid fa-qrcode"></i>
+        <div style="min-width:0;">
+          <h1>AJC QR Creator</h1>
+          <p style="font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">កម្មវិធីបង្កើត QR Code និងគ្រប់គ្រងការ Scan ថតរូប</p>
+        </div>
+      </div>
+      <div class="admin-header-actions">
+        <span id="server-status" class="qr-tag" style="background: rgba(76, 175, 80, 0.1); color: #4CAF50; border-color: rgba(76,175,80,0.2); white-space: nowrap;">
+          <i class="fa-solid fa-circle-check"></i> Server ដំណើរការធម្មតា
+        </span>
+        <span id="welcome-badge" class="hidden" style="font-size: 0.82rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 4px 12px; white-space: nowrap;">
+          <i class="fa-solid fa-circle-user" style="color: #00e5ff;"></i>
+          <span>សូមស្វាគមន៍៖ </span><strong id="welcome-name" style="color: #fff;"></strong>
+        </span>
+        <button id="btn-logout" class="btn btn-secondary btn-sm hidden" style="padding: 6px 12px; background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); white-space: nowrap; flex-shrink: 0;">
+          <i class="fa-solid fa-right-from-bracket"></i> ចាកចេញ
+        </button>
+      </div>
+    </header>
+
+
+    <!-- Stats Section -->
+    <div class="stats-grid">
+      <div class="glass-panel stat-card">
+        <div class="stat-info">
+          <h3>ចំនួន QR Code ទាំងអស់</h3>
+          <div id="stat-total-qr" class="stat-number">0</div>
+        </div>
+        <i class="fa-solid fa-square-poll-horizontal stat-icon"></i>
+      </div>
+      
+      <div class="glass-panel stat-card">
+        <div class="stat-info">
+          <h3>ចំនួន Scan សរុប</h3>
+          <div id="stat-total-scans" class="stat-number">0</div>
+        </div>
+        <i class="fa-solid fa-bolt stat-icon"></i>
+      </div>
+
+      <div class="glass-panel stat-card">
+        <div class="stat-info">
+          <h3>ចំនួន Scan ថ្ងៃនេះ</h3>
+          <div id="stat-today-scans" class="stat-number">0</div>
+        </div>
+        <i class="fa-solid fa-calendar-day stat-icon"></i>
+      </div>
+    </div>
+
+    <!-- Main Section Grid -->
+    <div class="dashboard-grid">
+      
+      <!-- Left Panel: Create QR Form -->
+      <aside class="glass-panel">
+        <h2 class="form-title"><i class="fa-solid fa-plus-circle"></i> បង្កើត QR Code ថ្មី</h2>
+        
+        <form id="create-qr-form" enctype="multipart/form-data">
+          <!-- QR ID -->
+          <div class="form-group">
+            <label for="qr-id">Sales Team (Unique ID) *</label>
+            <input type="text" id="qr-id" name="id" placeholder="ឧ. Team-A, Sales-01" required>
+            <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 4px;">
+              * មិនអនុញ្ញាតអោយស្ទួនគ្នាទេ និងកុំប្រើចន្លោះទទេ (space)
+            </small>
+          </div>
+
+          <!-- Name / Label -->
+          <div class="form-group">
+            <label for="qr-name">Depot *</label>
+            <input type="text" id="qr-name" name="name" placeholder="ឧ. Depot-A, Depot-B" required>
+          </div>
+
+          <!-- Hashtag -->
+          <div class="form-group">
+            <label for="qr-hashtag">Text Hashtags សម្រាប់ភ្ជាប់ជាមួយរូបថត</label>
+            <input type="text" id="qr-hashtag" name="hashtag" placeholder="ឧ. #AJCQRCode #Event2026 #Smile">
+          </div>
+
+          <!-- Default Location -->
+          <div class="form-group">
+            <label for="qr-default-location">ឈ្មោះផ្សារ / ទីតាំងលំនាំដើម (Default Market/Location)</label>
+            <input type="text" id="qr-default-location" name="default_location" placeholder="ឧ. ផ្សារអូរឫស្សី Stall A12">
+          </div>
+
+          <!-- Frame Selection -->
+          <div class="form-group">
+            <label>ជ្រើសរើស Photo Frame Cover (SVG/PNG)</label>
+            <div class="frame-templates-grid">
+              <div class="frame-option selected" data-template="default_frame.svg">
+                <img src="uploads/default_frame.svg" alt="Default Frame">
+                <span>Default Frame</span>
+              </div>
+              <div class="frame-option" id="upload-custom-trigger">
+                <div class="file-upload-wrapper" style="height: 100%; border-style: dashed; padding: 10px 0;">
+                  <i class="fa-solid fa-cloud-arrow-up" style="font-size: 1.2rem;"></i>
+                  <span style="font-size: 0.7rem;">បញ្ចូល Frame ថ្មី</span>
+                </div>
+              </div>
+            </div>
+            <input type="file" id="frame-file" name="frame_file" accept="image/*" class="hidden">
+            <input type="hidden" id="frame-template" name="frame_template" value="default_frame.svg">
+            <div id="custom-frame-badge" class="qr-tag hidden" style="margin-top: 10px; display: block; text-align: center;">
+              <i class="fa-solid fa-image"></i> បានជ្រើសរើស File ផ្ទាល់ខ្លួន
+            </div>
+          </div>
+
+          <!-- Social Redirect Links -->
+          <div class="form-group" style="margin-top: 25px;">
+            <label style="color: #fff; font-weight: 700; border-bottom: 1px solid var(--border-glass); padding-bottom: 5px; margin-bottom: 15px;">
+              តំណភ្ជាប់បណ្តាញសង្គម (Social Redirects)
+            </label>
+            
+            <div style="margin-bottom: 12px;">
+              <label for="fb-url" style="font-size: 0.8rem; display: flex; align-items: center; justify-content: space-between;">
+                <span><i class="fa-brands fa-facebook" style="color: var(--color-fb);"></i> Facebook Page/Profile URL</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+                  <input type="checkbox" name="show_facebook" value="true" style="width: auto !important; height: auto !important; margin: 0; cursor: pointer;"> បង្ហាញទៅអ្នក Scan
+                </span>
+              </label>
+              <input type="url" id="fb-url" name="facebook_url" value="https://www.facebook.com" placeholder="https://www.facebook.com/yourpage">
+            </div>
+
+            <div style="margin-bottom: 12px;">
+              <label for="tt-url" style="font-size: 0.8rem; display: flex; align-items: center; justify-content: space-between;">
+                <span><i class="fa-brands fa-tiktok" style="color: #fff;"></i> TikTok Profile URL</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+                  <input type="checkbox" name="show_tiktok" value="true" style="width: auto !important; height: auto !important; margin: 0; cursor: pointer;"> បង្ហាញទៅអ្នក Scan
+                </span>
+              </label>
+              <input type="url" id="tt-url" name="tiktok_url" value="https://www.tiktok.com" placeholder="https://www.tiktok.com/@yourprofile">
+            </div>
+
+            <div style="margin-bottom: 12px;">
+              <label for="yt-url" style="font-size: 0.8rem; display: flex; align-items: center; justify-content: space-between;">
+                <span><i class="fa-brands fa-youtube" style="color: var(--color-yt);"></i> YouTube Channel URL</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+                  <input type="checkbox" name="show_youtube" value="true" style="width: auto !important; height: auto !important; margin: 0; cursor: pointer;"> បង្ហាញទៅអ្នក Scan
+                </span>
+              </label>
+              <input type="url" id="yt-url" name="youtube_url" value="https://www.youtube.com" placeholder="https://www.youtube.com/c/yourchannel">
+            </div>
+
+            <!-- GPS Location Toggler -->
+            <div style="margin-top: 15px; border-top: 1px solid var(--border-glass); padding-top: 15px;">
+              <label style="font-size: 0.8rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+                <span><i class="fa-solid fa-map-location-dot" style="color: #ff3366; margin-right: 6px;"></i> ចាប់យកទីតាំង GPS របស់អតិថិជន</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+                  <input type="checkbox" name="capture_location" value="true" style="width: auto !important; height: auto !important; margin: 0; cursor: pointer;"> បើកដំណើរការ
+                </span>
+              </label>
+              <small style="color: var(--text-muted); font-size: 0.7rem; display: block; margin-top: 4px; line-height: 1.3;">
+                * ប្រសិនបើបើក វានឹងស្នើសុំសិទ្ធិចាប់ទីតាំង GPS ពីទូរស័ព្ទរបស់អតិថិជននៅពេលស្កេន។
+              </small>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+            <i class="fa-solid fa-plus"></i> បង្កើត QR Code
+          </button>
+        </form>
+      </aside>
+
+      <!-- Right Panel: Tabs, List, Logs -->
+      <main class="glass-panel" style="min-height: 600px;">
+        
+        <!-- Tabs Header -->
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('qr-list-tab')">
+            <i class="fa-solid fa-list-check"></i> គ្រប់គ្រង QR Code
+          </button>
+          <button class="tab-btn" onclick="switchTab('scan-logs-tab')">
+            <i class="fa-solid fa-clock-rotate-left"></i> ព័ត៌មានអ្នក Scan
+          </button>
+          <button id="tab-btn-settings" class="tab-btn hidden" onclick="switchTab('settings-tab')">
+            <i class="fa-solid fa-key"></i> កំណត់សិទ្ធិ Keys
+          </button>
+        </div>
+
+        <!-- Tab 1: QR Code List -->
+        <section id="qr-list-tab" class="tab-content active">
+          
+          <!-- Actions Bar -->
+          <div class="actions-bar">
+            <div class="batch-actions">
+              <input type="checkbox" id="select-all-qrs" style="cursor: pointer; width: 18px; height: 18px;">
+              <label for="select-all-qrs" style="font-size: 0.9rem; cursor: pointer; font-weight: 600;">ជ្រើសរើសទាំងអស់</label>
+              <button id="btn-batch-download" class="btn btn-success btn-sm" style="margin-left: 10px;">
+                <i class="fa-solid fa-file-zip"></i> ទាញយកដែលបានជ្រើសរើស (ZIP)
+              </button>
+            </div>
+            
+            <input type="text" id="search-qr" class="form-group search-input" style="margin-bottom: 0;" placeholder="ស្វែងរក QR Code...">
+          </div>
+
+          <!-- Empty State -->
+          <div id="qr-empty-state" class="text-center" style="padding: 60px 20px; color: var(--text-muted);">
+            <i class="fa-solid fa-folder-open" style="font-size: 4rem; opacity: 0.3; margin-bottom: 15px;"></i>
+            <p>មិនទាន់មាន QR Code ត្រូវបានបង្កើតនៅឡើយទេ!</p>
+          </div>
+
+          <!-- QR List Container -->
+          <div id="qr-list-container">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+        <!-- Tab 2: Scan Logs -->
+        <section id="scan-logs-tab" class="tab-content">
+          
+          <!-- Actions Bar -->
+          <div class="actions-bar" style="margin-bottom: 15px;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <button id="btn-export-excel" class="btn btn-secondary btn-sm">
+                <i class="fa-solid fa-file-excel" style="color: #107c41;"></i> នាំចេញជា Excel
+              </button>
+              <button id="btn-refresh-logs" class="btn btn-secondary btn-sm">
+                <i class="fa-solid fa-arrows-rotate"></i> ផ្ទុកឡើងវិញ
+              </button>
+              <!-- Bulk Delete Buttons -->
+              <button id="btn-delete-selected-logs" class="btn btn-danger btn-sm hidden" style="padding: 8px 14px; font-size: 0.85rem;">
+                <i class="fa-solid fa-trash-can"></i> លុបដែលជ្រើសរើស (<span id="selected-logs-count">0</span>)
+              </button>
+              <button id="btn-delete-filtered-logs" class="btn btn-danger btn-sm hidden" style="padding: 8px 14px; font-size: 0.85rem; background: linear-gradient(135deg, #ff8c00 0%, #ff4500 100%); box-shadow: 0 4px 15px rgba(255, 69, 0, 0.25);">
+                <i class="fa-solid fa-dumpster-fire"></i> លុបតាមការចម្រុះ (<span id="filtered-logs-count">0</span>)
+              </button>
+            </div>
+            
+            <input type="text" id="search-logs" class="form-group search-input" style="margin-bottom: 0;" placeholder="ស្វែងរកតាមឈ្មោះ លេខទូរស័ព្ទ ទីតាំង...">
+          </div>
+
+          <!-- Filters Bar -->
+          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-glass); border-radius: 12px; padding: 12px 15px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <label for="filter-log-date" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0;">កាលបរិច្ឆេទ៖</label>
+              <input type="date" id="filter-log-date" class="form-group" style="margin-bottom: 0; max-width: 140px; padding: 6px 10px; font-size: 0.8rem; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <label for="filter-log-team" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0;">Sales Team៖</label>
+              <select id="filter-log-team" class="form-group" style="margin-bottom: 0; max-width: 140px; padding: 6px 10px; font-size: 0.8rem; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff; height: 34px;">
+                <option value="">-- ទាំងអស់ --</option>
+              </select>
+            </div>
+            <button id="btn-clear-log-filters" class="btn btn-secondary btn-sm" style="padding: 6px 12px; font-size: 0.8rem;" title="សម្អាតការចម្រុះ">
+              <i class="fa-solid fa-filter-circle-xmark"></i> សម្អាត
+            </button>
+          </div>
+
+          <!-- GPS Secure Context Alert Info -->
+          <div style="background: rgba(0, 242, 254, 0.05); border: 1px solid rgba(0, 242, 254, 0.1); border-radius: 12px; padding: 12px 15px; margin-bottom: 20px; font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 10px;">
+            <i class="fa-solid fa-circle-info" style="color: #00f2fe; font-size: 1rem;"></i>
+            <span>
+              <strong>ចំណាំ៖</strong> ទីតាំង GPS របស់អតិថិជននឹងមិនត្រូវបានចាប់ឡើយ ប្រសិនបើពួកគេដំណើរការតំណភ្ជាប់ស្កេនលើទូរស័ព្ទដៃដែលគ្មានសុវត្ថិភាព (HTTP)។ ដើម្បីឱ្យចាប់ទីតាំង GPS បានត្រឹមត្រូវ សូមប្រាកដថាតំណភ្ជាប់ស្កេនដំណើរការលើ <strong>HTTPS</strong> (ឧទាហរណ៍៖ ប្រើប្រាស់ Ngrok សម្រាប់តភ្ជាប់ HTTPS)។
+            </span>
+          </div>
+
+          <!-- Empty State Logs -->
+          <div id="logs-empty-state" class="text-center" style="padding: 60px 20px; color: var(--text-muted);">
+            <i class="fa-solid fa-chart-line" style="font-size: 4rem; opacity: 0.3; margin-bottom: 15px;"></i>
+            <p>មិនទាន់មានទិន្នន័យអ្នក Scan ចូលមកនៅឡើយទេ!</p>
+          </div>
+
+          <!-- Table Container -->
+          <div id="logs-table-container" class="table-wrapper hidden">
+            <table class="logs-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px; text-align: center; vertical-align: middle;">
+                    <input type="checkbox" id="select-all-logs" style="width: 18px; height: 18px; cursor: pointer; accent-color: #00e5ff; margin: 0; vertical-align: middle;">
+                  </th>
+                  <th>ពេលវេលា</th>
+                  <th>Sales Team</th>
+                  <th>Depot</th>
+                  <th>ឈ្មោះអ្នក Scan</th>
+                  <th>លេខទូរស័ព្ទ</th>
+                  <th>ទីតាំង / ឈ្មោះផ្សារ</th>
+                  <th style="width: 80px; text-align: center;">សកម្មភាព</th>
+                </tr>
+              </thead>
+              <tbody id="logs-table-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Tab 3: Settings Keys Management -->
+        <section id="settings-tab" class="tab-content">
+          <div style="margin-bottom: 20px;">
+            <h2><i class="fa-solid fa-key" style="color: #ffb703;"></i> គ្រប់គ្រង Security Keys</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">កំណត់លេខកូដសម្ងាត់សម្រាប់ចូលប្រើប្រាស់ និងគ្រប់គ្រងសិទ្ធិរបស់គណនី</p>
+          </div>
+
+          <!-- Add Key Form -->
+          <div class="glass-panel" style="padding: 20px; margin-bottom: 25px; border-color: rgba(255, 183, 3, 0.15);">
+            <h3 style="font-size: 1rem; margin-bottom: 15px;"><i class="fa-solid fa-plus-circle"></i> បន្ថែម Key ថ្មី</h3>
+            <form id="add-key-form" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+              <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 240px;">
+                <label for="new-key-value" style="font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+                  <span>លេខកូដសម្ងាត់ (Key)</span>
+                  <a href="#" id="btn-generate-key" style="color: #00e5ff; text-decoration: none; font-size: 0.78rem; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles"></i> បង្កើត Key ស្វ័យប្រវត្ត</a>
+                </label>
+                <input type="text" id="new-key-value" placeholder="បញ្ចូលលេខកូដ ឬទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្ត..." style="margin-bottom: 0; height: 42px; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff;">
+              </div>
+              <div class="form-group" style="margin-bottom: 0; width: 220px;">
+                <label for="new-key-note" style="font-size: 0.85rem;">ឈ្មោះសម្គាល់ / ម្ចាស់ Key *</label>
+                <input type="text" id="new-key-note" placeholder="ឧ. ឈ្មោះបុគ្គលិក ឬសាខា..." required style="margin-bottom: 0; height: 42px; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff;">
+              </div>
+              <div class="form-group" style="margin-bottom: 0; width: 150px;">
+                <label for="new-key-role" style="font-size: 0.85rem;">កម្រិតសិទ្ធិ (Role) *</label>
+                <select id="new-key-role" required style="margin-bottom: 0; height: 42px; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff;">
+                  <option value="user" selected>User (មើលបានតែទិន្នន័យ)</option>
+                  <option value="moderator" id="role-opt-moderator">Moderator (ស្មើ Admin តែលុប Key មិនបាន)</option>
+                  <option value="admin" id="role-opt-admin">Admin (ពេញសិទ្ធិលើប្រព័ន្ធ)</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0; width: 100px;">
+                <label for="new-key-max-devices" style="font-size: 0.85rem;">ចំនួនឧបករណ៍ *</label>
+                <input type="number" id="new-key-max-devices" value="5" min="1" required style="margin-bottom: 0; height: 42px; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff; text-align: center;">
+              </div>
+              <button type="submit" class="btn btn-primary" style="height: 42px; background: linear-gradient(135deg, #ffb703 0%, #fb8500 100%);">
+                <i class="fa-solid fa-plus"></i> បន្ថែម Key
+              </button>
+            </form>
+          </div>
+
+          <!-- Keys List Container -->
+          <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+            <!-- Admin Keys List -->
+            <div id="admin-keys-card" class="glass-panel" style="padding: 15px;">
+              <h4 style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 12px; color: #ff007f;">
+                <i class="fa-solid fa-user-shield"></i> Admin Keys
+              </h4>
+              <ul id="admin-keys-list" style="list-style: none; padding: 0; margin: 0;">
+                <!-- Dynamically populated -->
+              </ul>
+            </div>
+
+            <!-- Moderator Keys List -->
+            <div id="moderator-keys-card" class="glass-panel" style="padding: 15px;">
+              <h4 style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 12px; color: #00f2fe;">
+                <i class="fa-solid fa-user-gear"></i> Moderator Keys
+              </h4>
+              <ul id="moderator-keys-list" style="list-style: none; padding: 0; margin: 0;">
+                <!-- Dynamically populated -->
+              </ul>
+            </div>
+
+            <!-- User Keys List -->
+            <div id="user-keys-card" class="glass-panel" style="padding: 15px;">
+              <h4 style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 12px; color: #4CAF50;">
+                <i class="fa-solid fa-user"></i> User Keys
+              </h4>
+              <ul id="user-keys-list" style="list-style: none; padding: 0; margin: 0;">
+                <!-- Dynamically populated -->
+              </ul>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+    </div>
+
+  </div>
+
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Local JS Libraries -->
+  <script src="js/qrcode.min.js"></script>
+  <script src="js/jszip.min.js"></script>
+  <script src="js/FileSaver.min.js"></script>
+  
+  <!-- Custom JS -->
+  <script src="js/keepalive.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
+

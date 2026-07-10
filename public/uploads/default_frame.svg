@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <defs>
+    <!-- Border Gradient -->
+    <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF3366" />
+      <stop offset="50%" stop-color="#9900EE" />
+      <stop offset="100%" stop-color="#00E5FF" />
+    </linearGradient>
+    
+    <!-- Banner Gradient -->
+    <linearGradient id="bannerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2D124D" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#0F061D" stop-opacity="0.95" />
+    </linearGradient>
+    
+    <!-- Glow Filter -->
+    <filter id="glow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Inner border line (neon glow) -->
+  <rect x="20" y="20" width="760" height="760" rx="40" fill="none" stroke="url(#neonGradient)" stroke-width="12" filter="url(#glow)" />
+  
+  <!-- Outer neat white line -->
+  <rect x="26" y="26" width="748" height="748" rx="34" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.6" />
+
+  <!-- Bottom Banner Overlay -->
+  <path d="M 26 620 L 774 620 L 774 734 C 774 756, 756 774, 734 774 L 66 774 C 44 774, 26 756, 26 734 Z" fill="url(#bannerGradient)" />
+  
+  <!-- Divider line above banner -->
+  <line x1="26" y1="620" x2="774" y2="620" stroke="url(#neonGradient)" stroke-width="4" />
+
+  <!-- Fun stickers/shapes on top corners -->
+  <!-- Top Left Badge -->
+  <g transform="translate(60, 60)">
+    <circle cx="0" cy="0" r="25" fill="#FF3366" />
+    <path d="M-8,-8 L8,8 M8,-8 L-8,8" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" />
+    <circle cx="0" cy="0" r="15" fill="none" stroke="#FFFFFF" stroke-width="2" />
+  </g>
+  
+  <!-- Top Right Badge (Camera Star icon style) -->
+  <g transform="translate(740, 60)">
+    <polygon points="0,-25 7,-7 25,0 7,7 0,25 -7,7 -25,0 -7,-7" fill="#00E5FF" />
+    <circle cx="0" cy="0" r="6" fill="#FFFFFF" />
+  </g>
+
+  <!-- Banner Branding Text -->
+  <text x="400" y="675" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="900" fill="#00E5FF" text-anchor="middle" letter-spacing="4">
+    ★ ស្កេនដើម្បីទទួលបានរូបថតស្អាតៗ ★
+  </text>
+  
+  <text x="400" y="725" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF" opacity="0.8" text-anchor="middle" letter-spacing="1">
+    រក្សាទុករូបថត និងចែករំលែកទៅកាន់បណ្តាញសង្គមរបស់អ្នក
+  </text>
+</svg>

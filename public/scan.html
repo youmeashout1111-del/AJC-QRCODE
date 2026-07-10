@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ស្កេន QR Code ថតរូបអនុស្សាវរីយ៍ - AJC</title>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body style="padding-bottom: 50px;">
+
+  <div class="scan-wrapper">
+    
+    <!-- Logo / Header -->
+    <header class="scan-header">
+      <h1 id="shop-name">AJC QR Photo Frame</h1>
+      <p id="qr-subtitle">ស្កេនថតរូបអនុស្សាវរីយ៍ និងចែករំលែកទៅកាន់បណ្តាញសង្គម</p>
+    </header>
+
+    <!-- Error / Invalid QR State -->
+    <div id="error-card" class="glass-panel text-center hidden" style="border-color: #ff3366;">
+      <i class="fa-solid fa-circle-exclamation" style="font-size: 4rem; color: #ff3366; margin-bottom: 20px;"></i>
+      <h2 style="margin-bottom: 10px;">រកមិនឃើញ QR Code!</h2>
+      <p style="color: var(--text-muted); margin-bottom: 20px;">លេខសម្គាល់ QR Code នេះមិនត្រឹមត្រូវ ឬត្រូវបានលុបចេញពីប្រព័ន្ធ។</p>
+      <a href="admin.html" class="btn btn-secondary">ទៅកាន់ផ្ទាំងគ្រប់គ្រង</a>
+    </div>
+
+    <!-- Main Stepper Wrapper -->
+    <div id="stepper-container">
+      
+      <!-- Step Progress Bar -->
+      <div class="step-progress-bar">
+        <div class="progress-step active" id="prog-step-1">
+          <div class="prog-circle">១</div>
+          <span>ព័ត៌មាន</span>
+        </div>
+        <div class="progress-line" id="prog-line-1"></div>
+        <div class="progress-step" id="prog-step-2">
+          <div class="prog-circle">២</div>
+          <span>ថតរូប</span>
+        </div>
+        <div class="progress-line" id="prog-line-2"></div>
+        <div class="progress-step" id="prog-step-3">
+          <div class="prog-circle">៣</div>
+          <span>រួចរាល់</span>
+        </div>
+      </div>
+
+      <!-- STEP 1: Register Scan & Info Form -->
+      <section id="step-1" class="glass-panel step-card">
+        <div class="step-header">
+          <div class="step-number">១</div>
+          <h3>បញ្ចូលព័ត៌មានរបស់អ្នក</h3>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
+          សូមបំពេញព័ត៌មានខាងក្រោម ដើម្បីទទួលបានសិទ្ធិថតរូបជាមួយ Frame ស្អាតៗ និងចែករំលែកយកកាដូផ្សេងៗ។
+        </p>
+
+        <!-- Geolocation Secure Context Alert (Hidden by default) -->
+        <div id="secure-context-alert" class="hidden" style="background: rgba(255, 0, 127, 0.1); border: 1px solid rgba(255, 0, 127, 0.2); border-radius: 12px; padding: 12px 15px; margin-bottom: 20px; font-size: 0.8rem; color: #ff6b8b;">
+          <i class="fa-solid fa-triangle-exclamation" style="margin-right: 8px;"></i>
+          <strong>សូមបញ្ជាក់៖</strong> ដោយសារតំណភ្ជាប់នេះមិនមែនជា HTTPS (Secure Context) ទីតាំង GPS នឹងមិនអាចចាប់បានឡើយនៅលើកម្មវិធីរុករកទូរស័ព្ទ។
+        </div>
+
+        <form id="scan-info-form">
+          <div class="form-group">
+            <label for="scanner-name">ឈ្មោះពេញ *</label>
+            <input type="text" id="scanner-name" required placeholder="ឧ. ម៉ៅ សុខា">
+          </div>
+          
+          <div class="form-group">
+            <label for="scanner-phone">លេខទូរស័ព្ទ (មិនតម្រូវ - Optional)</label>
+            <input type="tel" id="scanner-phone" placeholder="ឧ. 096XXXXXXX">
+          </div>
+
+          <div class="form-group">
+            <label for="scanner-location">ទីតាំង / ឈ្មោះតូបលក់ដូរ *</label>
+            <input type="text" id="scanner-location" required placeholder="ឧ. តូបលេខ A12, ផ្សារអូរឫស្សី">
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+            បន្ទាប់ <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </form>
+      </section>
+
+      <!-- STEP 2: Camera Capture or File Upload -->
+      <section id="step-2" class="glass-panel step-card hidden">
+        <div class="step-header">
+          <div class="step-number">២</div>
+          <h3>ថតរូប ឬបញ្ចូលរូបភាព</h3>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
+          ជ្រើសរើសការថតរូបផ្ទាល់ពីកាមេរ៉ាទូរស័ព្ទ ឬជ្រើសរើសរូបថតដែលមានស្រាប់ពីវិចិត្រសាលរូបភាពរបស់អ្នក។
+        </p>
+
+        <!-- Source Selector -->
+        <div id="photo-source-selector" class="photo-source-select">
+          <div class="source-btn" id="btn-use-camera">
+            <i class="fa-solid fa-camera"></i>
+            <div>ថតរូបថ្មី</div>
+          </div>
+          
+          <div class="source-btn" id="btn-use-upload">
+            <i class="fa-solid fa-images"></i>
+            <div>ជ្រើសរើសរូបថត</div>
+          </div>
+        </div>
+
+        <!-- Camera Section (Hidden initially) -->
+        <div id="camera-section" class="hidden">
+          <div class="camera-container">
+            <video id="video-stream" class="camera-stream" autoplay playsinline></video>
+            <!-- Frame Overlay in real time -->
+            <img id="camera-frame-mask" class="camera-frame-overlay" src="" alt="Frame Mask">
+          </div>
+          
+          <div class="camera-controls">
+            <button id="btn-capture" class="btn btn-primary">
+              <i class="fa-solid fa-circle-dot"></i> ថតរូប (Capture)
+            </button>
+            <button id="btn-cancel-camera" class="btn btn-secondary">
+              <i class="fa-solid fa-chevron-left"></i> ត្រឡប់ក្រោយ
+            </button>
+          </div>
+        </div>
+
+        <!-- Upload File Section (Hidden initially) -->
+        <div id="upload-section" class="hidden">
+          <div class="file-upload-wrapper" id="upload-box" style="height: 180px;">
+            <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2.8rem;"></i>
+            <span style="font-size: 1rem; font-weight: 700; margin-top: 10px;">ជ្រើសរើសឯកសាររូបភាព</span>
+            <span style="font-size: 0.8rem; opacity: 0.7;">គាំទ្រ JPG, PNG, WEBP</span>
+            <input type="file" id="user-photo-file" accept="image/*">
+          </div>
+          
+          <button id="btn-cancel-upload" class="btn btn-secondary" style="width: 100%; margin-top: 15px;">
+            <i class="fa-solid fa-chevron-left"></i> ត្រឡប់ក្រោយ
+          </button>
+        </div>
+      </section>
+
+      <!-- STEP 3: Preview Canvas & Social Share Buttons -->
+      <section id="step-3" class="glass-panel step-card hidden">
+        <div class="step-header">
+          <div class="step-number">៣</div>
+          <h3>រូបថតអនុស្សាវរីយ៍របស់អ្នក</h3>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
+          នេះជារូបថតដែលបានបញ្ចូល Frame រួចរាល់។ សូមទាញយក និងបង្ហោះទៅកាន់បណ្តាញសង្គមរបស់អ្នក!
+        </p>
+
+        <!-- Canvas Container -->
+        <div class="canvas-preview-container">
+          <canvas id="result-canvas" class="result-canvas" width="800" height="800"></canvas>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div id="hashtag-container" style="display: inline-flex; align-items: center; background: rgba(0, 242, 254, 0.08); border: 1px solid rgba(0, 242, 254, 0.15); border-radius: 20px; padding: 6px 16px; cursor: pointer; transition: all 0.3s;" title="ចុចដើម្បីចម្លង Hashtag">
+            <span id="preview-hashtag" style="font-size: 1rem; font-weight: 600; color: #00f2fe;">
+              <i class="fa-solid fa-hashtag"></i> #AJC
+            </span>
+            <span style="border-left: 1px solid rgba(0, 242, 254, 0.3); margin-left: 10px; padding-left: 10px; color: #fff; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px;">
+              <i class="fa-solid fa-copy"></i> ចម្លង (Copy)
+            </span>
+          </div>
+        </div>
+
+        <!-- Download & Social Buttons -->
+        <button id="btn-download-result" class="btn btn-success" style="width: 100%; margin-bottom: 20px;">
+          <i class="fa-solid fa-download"></i> រក្សាទុករូបភាព (Save Image)
+        </button>
+
+        <div id="social-share-block" style="border-top: 1px solid var(--border-glass); padding-top: 20px;">
+          <h4 style="margin-bottom: 10px; font-size: 1rem; text-align: center;">ចែករំលែកទៅកាន់បណ្តាញសង្គម (Share to)</h4>
+          <div class="social-share-list">
+            <button id="share-btn-fb" class="share-btn share-fb" onclick="shareToSocial('facebook')">
+              <i class="fa-brands fa-facebook"></i>
+              <span>Facebook</span>
+            </button>
+            <button id="share-btn-tt" class="share-btn share-tt" onclick="shareToSocial('tiktok')">
+              <i class="fa-brands fa-tiktok"></i>
+              <span>TikTok</span>
+            </button>
+            <button id="share-btn-yt" class="share-btn share-yt" onclick="shareToSocial('youtube')">
+              <i class="fa-brands fa-youtube"></i>
+              <span>YouTube</span>
+            </button>
+          </div>
+        </div>
+
+        <div style="margin-top: 20px; text-align: center;">
+          <button id="btn-retake" class="btn btn-secondary btn-sm">
+            <i class="fa-solid fa-arrows-rotate"></i> ថតរូបជាថ្មី
+          </button>
+        </div>
+      </section>
+
+    </div>
+
+  </div>
+
+  <!-- Social Sharing Instructions Modal -->
+  <div id="guide-overlay" class="guide-overlay">
+    <div class="guide-modal">
+      <div class="guide-icon">
+        <i class="fa-solid fa-check-double"></i>
+      </div>
+      <h3 class="guide-title">ថតចម្លង (Copy) Hashtag រួចរាល់!</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+        យើងបានរក្សាទុករូបថតទៅក្នុងទូរស័ព្ទរបស់អ្នក និងចម្លង Hashtag ទៅកាន់ Clipboard រួចហើយ។
+      </p>
+
+      <div class="guide-steps">
+        <h4 style="font-size: 0.9rem; margin-bottom: 10px; color: #fff;">សូមអនុវត្តតាមជំហានខាងក្រោម៖</h4>
+        <ul>
+          <li>
+            <i class="fa-solid fa-circle-down"></i>
+            <span>ពិនិត្យមើលរូបថតនៅក្នុង Gallery ទូរស័ព្ទរបស់អ្នក (ទើបដោនឡូដ)</span>
+          </li>
+          <li>
+            <i class="fa-solid fa-paste"></i>
+            <span>ពេលបង្ហោះរូបភាព សូមចុច <b>"Paste"</b> ឬ <b>"បិទភ្ជាប់"</b> នៅក្នុងប្រអប់សរសេរដើម្បីដាក់ Hashtag</span>
+          </li>
+          <li>
+            <i class="fa-solid fa-share-from-square"></i>
+            <span>ចុចបង្ហោះជាការស្រេច!</span>
+          </li>
+        </ul>
+      </div>
+
+      <a id="btn-social-redirect" href="#" target="_blank" class="btn btn-primary" style="width: 100%;">
+        បើកដំណើរការកម្មវិធី <i class="fa-solid fa-up-right-from-square"></i>
+      </a>
+      
+      <button id="btn-close-guide" class="btn btn-secondary btn-sm" style="width: 100%; margin-top: 10px;">
+        បិទផ្ទាំងនេះ
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Client-side scan logic -->
+  <script src="js/scan.js"></script>
+</body>
+</html>
