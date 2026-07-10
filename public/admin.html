@@ -41,6 +41,11 @@
 
   <!-- Login Overlay -->
   <div id="login-overlay" class="login-overlay">
+    <script>
+      if (localStorage.getItem('ajc_security_key')) {
+        document.getElementById('login-overlay').classList.add('hidden');
+      }
+    </script>
     <div class="glass-panel login-card" style="width: 100%; max-width: 400px; padding: 30px; text-align: center; border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 15px 35px rgba(0,0,0,0.5);">
       <div style="font-size: 3rem; color: #00f2fe; margin-bottom: 15px; text-shadow: 0 0 20px rgba(0, 242, 254, 0.5);">
         <i class="fa-solid fa-shield-halved"></i>

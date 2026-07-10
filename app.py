@@ -12,11 +12,15 @@ except ImportError:
     HAS_PG = False
 import base64
 import threading
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from flask import Flask, request, jsonify, send_from_directory, Response, g, has_app_context
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__, static_folder='public', static_url_path='')
+
+# Helper to get current ISO timestamp in ICT (Indochina Time, UTC+7)
+def get_ict_now():
+    return datetime.now(timezone(timedelta(hours=7))).isoformat()
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 DATABASE_URL = os.environ.get('DATABASE_URL') # Set this on Render.com
@@ -213,7 +217,7 @@ def init_db():
     count_val = list(count.values())[0] if isinstance(count, dict) else count[0]
     
     if count_val == 0:
-        now = datetime.now().isoformat()
+        now = get_ict_now()
         defaults = [
             ('admin123', 'admin', 5, 'Admin Default'),
             ('mod123', 'moderator', 5, 'Mod Default'),
@@ -275,7 +279,7 @@ def get_role_by_key(key):
         q_key = "SELECT id FROM keys WHERE key = %s" if is_pg else "SELECT id FROM keys WHERE key = ?"
         row = execute_query(q_key, (key,), fetch_one=True)
         if row:
-            now = datetime.now().isoformat()
+            now = get_ict_now()
             execute_query(
                 "INSERT INTO devices (key_id, device_id, registered_at) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING" if is_pg else
                 "INSERT OR IGNORE INTO devices (key_id, device_id, registered_at) VALUES (?, ?, ?)",
@@ -407,7 +411,7 @@ def create_qrcode():
     if not frame_image:
         frame_image = request.form.get('frame_template', 'default_frame.png')
 
-    now = datetime.now().isoformat()
+    now = get_ict_now()
     q_ins = """
         INSERT INTO qrcodes
             (id, name, hashtag, facebook_url, tiktok_url, youtube_url,
@@ -576,7 +580,7 @@ def auth_login():
     if row:
         note = row['note'] or ''
         if device_id:
-            now = datetime.now().isoformat()
+            now = get_ict_now()
             q_ins = "INSERT INTO devices (key_id, device_id, registered_at) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING" if is_pg else "INSERT OR IGNORE INTO devices (key_id, device_id, registered_at) VALUES (?, ?, ?)"
             execute_query(q_ins, (row['id'], device_id, now), commit=True)
 
@@ -655,7 +659,7 @@ def add_auth_key():
             if not execute_query(q_chk, (new_key,), fetch_one=True):
                 break
                 
-    now = datetime.now().isoformat()
+    now = get_ict_now()
     q_ins = "INSERT INTO keys (key, role, max_devices, note, created_at) VALUES (%s, %s, %s, %s, %s)" if is_pg else "INSERT INTO keys (key, role, max_devices, note, created_at) VALUES (?, ?, ?, ?, ?)"
     execute_query(q_ins, (new_key, target_role, max_devices, note, now), commit=True)
 
@@ -815,7 +819,7 @@ def record_scan():
 
     qr_name = qr_row['name'] if qr_row else 'មិនស្គាល់'
     scan_id = uuid.uuid4().hex[:12]
-    now     = datetime.now().isoformat()
+    now     = get_ict_now()
 
     q_ins = """
         INSERT INTO scans (id, qr_id, qr_name, name, phone, location, latitude, longitude, timestamp)
