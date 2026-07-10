@@ -194,6 +194,15 @@ def init_db():
             longitude TEXT,
             timestamp TEXT
         );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS frames (
+            id          {id_type},
+            name        TEXT NOT NULL,
+            image_data  TEXT NOT NULL,
+            is_active   INTEGER DEFAULT 0,
+            created_at  TEXT
+        );
         """
     ]
     
@@ -839,6 +848,126 @@ def record_scan():
         'name': name, 'phone': phone, 'location': location,
         'latitude': latitude, 'longitude': longitude, 'timestamp': now
     }), 201
+
+# ── Photo Frames ──────────────────────────────────────────────────────────────
+
+@app.route('/api/frames', methods=['GET'])
+def get_frames():
+    auth_key = request.headers.get('Authorization')
+    role = get_role_by_key(auth_key)
+    if not role or role not in ['admin', 'moderator']:
+        return jsonify({'error': 'គ្មានសិទ្ធិចូលដំណើរការ!'}), 403
+
+    rows = execute_query("SELECT id, name, image_data, is_active, created_at FROM frames ORDER BY id DESC", fetch_all=True)
+    return jsonify(rows)
+
+@app.route('/api/frames', methods=['POST'])
+def upload_frame():
+    auth_key = request.headers.get('Authorization')
+    role = get_role_by_key(auth_key)
+    if not role or role not in ['admin', 'moderator']:
+        return jsonify({'error': 'គ្មានសិទ្ធិចូលដំណើរការ!'}), 403
+
+    if 'frame_file' not in request.files:
+        return jsonify({'error': 'គ្មាន File ត្រូវបានជ្រើសរើសទេ!'}), 400
+
+    file = request.files['frame_file']
+    if not file or file.filename == '':
+        return jsonify({'error': 'គ្មាន File ត្រូវបានជ្រើសរើសទេ!'}), 400
+
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'ប្រភេទឯកសារមិនត្រឹមត្រូវ! (គាំទ្រតែ PNG, JPG, JPEG, SVG, WEBP)'}), 400
+
+    filename = secure_filename(file.filename)
+    ext = filename.rsplit('.', 1)[1].lower()
+    
+    try:
+        image_data = file_to_base64(file, ext)
+    except Exception as e:
+        return jsonify({'error': f'ចម្លងរូបភាពបរាជ័យ: {e}'}), 500
+
+    now = get_ict_now()
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    
+    # Check if this is the first frame. If it is, make it active by default
+    count_row = execute_query("SELECT COUNT(*) FROM frames", fetch_one=True)
+    count_val = list(count_row.values())[0] if isinstance(count_row, dict) else count_row[0]
+    is_active = 1 if count_val == 0 else 0
+
+    q_ins = "INSERT INTO frames (name, image_data, is_active, created_at) VALUES (%s, %s, %s, %s)" if is_pg else "INSERT INTO frames (name, image_data, is_active, created_at) VALUES (?, ?, ?, ?)"
+    execute_query(q_ins, (filename, image_data, is_active, now), commit=True)
+
+    return jsonify({'message': 'បានបញ្ចូល Frame ដោយជោគជ័យ!'}), 201
+
+@app.route('/api/frames/<int:frame_id>', methods=['DELETE'])
+def delete_frame(frame_id):
+    auth_key = request.headers.get('Authorization')
+    role = get_role_by_key(auth_key)
+    if not role or role not in ['admin', 'moderator']:
+        return jsonify({'error': 'គ្មានសិទ្ធិចូលដំណើរការ!'}), 403
+
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    
+    # Check if we are deleting the active frame
+    q_chk = "SELECT is_active FROM frames WHERE id = %s" if is_pg else "SELECT is_active FROM frames WHERE id = ?"
+    row = execute_query(q_chk, (frame_id,), fetch_one=True)
+    if not row:
+        return jsonify({'error': 'រកមិនឃើញ Frame ឡើយ!'}), 404
+        
+    is_active = row['is_active']
+
+    q_del = "DELETE FROM frames WHERE id = %s" if is_pg else "DELETE FROM frames WHERE id = ?"
+    execute_query(q_del, (frame_id,), commit=True)
+
+    # If we deleted the active frame, set the most recent one as active
+    if is_active == 1:
+        latest_row = execute_query("SELECT id FROM frames ORDER BY id DESC LIMIT 1", fetch_one=True)
+        if latest_row:
+            q_upd = "UPDATE frames SET is_active = 1 WHERE id = %s" if is_pg else "UPDATE frames SET is_active = 1 WHERE id = ?"
+            execute_query(q_upd, (latest_row['id'],), commit=True)
+
+    return jsonify({'message': 'បានលុប Frame ដោយជោគជ័យ!'})
+
+@app.route('/api/frames/delete-all', methods=['POST'])
+def delete_all_frames():
+    auth_key = request.headers.get('Authorization')
+    role = get_role_by_key(auth_key)
+    if not role or role not in ['admin', 'moderator']:
+        return jsonify({'error': 'គ្មានសិទ្ធិចូលដំណើរការ!'}), 403
+
+    execute_query("DELETE FROM frames", commit=True)
+    return jsonify({'message': 'បានលុប Frame ទាំងអស់ដោយជោគជ័យ!'})
+
+@app.route('/api/frames/active/<int:frame_id>', methods=['POST'])
+def set_active_frame(frame_id):
+    auth_key = request.headers.get('Authorization')
+    role = get_role_by_key(auth_key)
+    if not role or role not in ['admin', 'moderator']:
+        return jsonify({'error': 'គ្មានសិទ្ធិចូលដំណើរការ!'}), 403
+
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    
+    # Check if target frame exists
+    q_chk = "SELECT 1 FROM frames WHERE id = %s" if is_pg else "SELECT 1 FROM frames WHERE id = ?"
+    if not execute_query(q_chk, (frame_id,), fetch_one=True):
+        return jsonify({'error': 'រកមិនឃើញ Frame ឡើយ!'}), 404
+
+    # Set all frames to inactive
+    execute_query("UPDATE frames SET is_active = 0", commit=True)
+    
+    # Set target frame to active
+    q_upd = "UPDATE frames SET is_active = 1 WHERE id = %s" if is_pg else "UPDATE frames SET is_active = 1 WHERE id = ?"
+    execute_query(q_upd, (frame_id,), commit=True)
+
+    return jsonify({'message': 'បានកំណត់យក Frame នេះមកប្រើប្រាស់!'})
+
+@app.route('/api/frames/active', methods=['GET'])
+def get_active_frame():
+    # Public route to get active frame image data (Base64)
+    row = execute_query("SELECT id, name, image_data FROM frames WHERE is_active = 1 LIMIT 1", fetch_one=True)
+    if not row:
+        return jsonify({'error': 'គ្មាន Frame ណាមួយត្រូវបានកំណត់ជា Active ឡើយ!'}), 404
+    return jsonify(row)
 
 # ── Server Info ───────────────────────────────────────────────────────────────
 

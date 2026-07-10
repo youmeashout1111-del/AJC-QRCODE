@@ -89,13 +89,23 @@ async function fetchQRConfig() {
       }
     }
     
-    // Set frame mask — use Base64 data URI if available (works on Render.com),
-    // otherwise fall back to the API image endpoint or static uploads/
-    const frameSrc = qrConfig.frame_image_data
-      ? qrConfig.frame_image_data
-      : (qrConfig.id && qrConfig.id !== 'test_qr'
-          ? `/api/frame-image/${qrConfig.id}`
-          : `uploads/${qrConfig.frame_image}`);
+    // Fetch active frame mask from server (global active frame)
+    let frameSrc = '';
+    try {
+      const frameRes = await fetch('/api/frames/active');
+      if (frameRes.ok) {
+        const activeFrame = await frameRes.json();
+        frameSrc = activeFrame.image_data;
+      }
+    } catch (e) {
+      console.error('Error fetching active frame:', e);
+    }
+    
+    // Fallback if no active frame is set
+    if (!frameSrc) {
+      frameSrc = 'uploads/default_frame.svg';
+    }
+    
     document.getElementById('camera-frame-mask').src = frameSrc;
     
   } catch (error) {
@@ -357,20 +367,7 @@ function compileFramedPhoto() {
     frameImg.onload = function() {
       ctx.drawImage(frameImg, 0, 0, 800, 800);
       
-      // 3. Draw configured text/hashtag directly onto image as watermark
-      if (qrConfig.hashtag) {
-        ctx.font = "italic bold 22px 'Kantumruy Pro', sans-serif";
-        // Place text in a safe corner, e.g., bottom left on top of the banner
-        ctx.fillStyle = '#00e5ff';
-        ctx.strokeStyle = '#0b0716';
-        ctx.lineWidth = 5;
-        
-        const textX = 50;
-        const textY = 750; // Inside the banner overlay
-        
-        ctx.strokeText(qrConfig.hashtag, textX, textY);
-        ctx.fillText(qrConfig.hashtag, textX, textY);
-      }
+      // 3. (Hashtag watermark drawing removed as requested)
       
       // Unlock Step 3
       document.getElementById('step-2').classList.add('hidden');
