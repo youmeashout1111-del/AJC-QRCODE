@@ -378,12 +378,8 @@ function compileFramedPhoto() {
     
     // Enable crossOrigin just in case
     frameImg.crossOrigin = 'Anonymous';
-    // Use Base64 data URI if stored in DB, otherwise API endpoint
-    frameImg.src = qrConfig.frame_image_data
-      ? qrConfig.frame_image_data
-      : (qrConfig.id && qrConfig.id !== 'test_qr'
-          ? `/api/frame-image/${qrConfig.id}`
-          : `uploads/${qrConfig.frame_image}`);
+    // Use the exact same frame overlay shown on the camera preview
+    frameImg.src = document.getElementById('camera-frame-mask').src;
   };
   
   userImg.src = capturedImageSrc;
