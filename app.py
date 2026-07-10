@@ -13,7 +13,7 @@ except ImportError:
 import base64
 import threading
 from datetime import datetime
-from flask import Flask, request, jsonify, send_from_directory, Response
+from flask import Flask, request, jsonify, send_from_directory, Response, g, has_app_context
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__, static_folder='public', static_url_path='')
@@ -54,8 +54,24 @@ def get_db_connection():
         conn.execute("PRAGMA foreign_keys=ON")
         return conn
 
+def get_db():
+    """Gets or creates a request-scoped database connection."""
+    if has_app_context():
+        if 'db' not in g:
+            g.db = get_db_connection()
+        return g.db
+    return get_db_connection()
+
+@app.teardown_appcontext
+def teardown_db(exception):
+    """Closes the database connection at the end of the request."""
+    if has_app_context():
+        db = g.pop('db', None)
+        if db is not None:
+            db.close()
+
 def execute_query(query, params=(), commit=False, fetch_all=False, fetch_one=False):
-    """Executes a database query safely for both PostgreSQL and SQLite."""
+    """Executes a database query safely reusing the request-scoped connection."""
     is_pg = bool(DATABASE_URL and HAS_PG)
     
     if not is_pg:
@@ -65,7 +81,11 @@ def execute_query(query, params=(), commit=False, fetch_all=False, fetch_one=Fal
             
     conn = None
     try:
-        conn = get_db_connection()
+        if has_app_context():
+            conn = get_db()
+        else:
+            conn = get_db_connection()
+            
         if is_pg:
             # Use RealDictCursor so rows behave like dicts (just like sqlite3.Row)
             cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -90,12 +110,20 @@ def execute_query(query, params=(), commit=False, fetch_all=False, fetch_one=Fal
             
         return result
     except Exception as e:
-        if conn and commit:
-            conn.rollback()
+        # Only rollback on PG transaction failure
+        if is_pg and commit and conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
         raise e
     finally:
-        if conn:
-            conn.close()
+        # If we are NOT in an application context, we must close connection immediately
+        if not has_app_context() and conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
         if not is_pg and commit:
             _db_lock.release()
 
