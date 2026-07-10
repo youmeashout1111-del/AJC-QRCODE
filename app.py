@@ -39,8 +39,12 @@ _db_lock = threading.Lock()
 def get_db_connection():
     """Returns a connection object. Supports PostgreSQL (Supabase) and SQLite."""
     if DATABASE_URL and HAS_PG:
+        # Convert postgres:// to postgresql:// for psycopg2 compatibility
+        url = DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
         # PostgreSQL Connection
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(url)
         return conn
     else:
         # SQLite Fallback Connection
@@ -287,8 +291,14 @@ def get_qrcodes():
     if not role:
         return jsonify({'error': 'សិទ្ធិចូលប្រើប្រាស់មិនត្រឹមត្រូវ!'}), 401
 
-    is_pg = bool(DATABASE_URL and HAS_PG)
-    rows = execute_query("SELECT * FROM qrcodes", fetch_all=True)
+    # Fetch all QR codes and their scan counts in a single query using LEFT JOIN
+    query = """
+        SELECT q.*, COUNT(s.id) as scan_count
+        FROM qrcodes q
+        LEFT JOIN scans s ON q.id = s.qr_id
+        GROUP BY q.id
+    """
+    rows = execute_query(query, fetch_all=True)
     result = []
     
     for row in rows:
@@ -297,11 +307,7 @@ def get_qrcodes():
         q['show_tiktok']      = bool(q['show_tiktok'])
         q['show_youtube']     = bool(q['show_youtube'])
         q['capture_location'] = bool(q['capture_location'])
-        
-        q_cnt = "SELECT COUNT(*) FROM scans WHERE qr_id = %s" if is_pg else "SELECT COUNT(*) FROM scans WHERE qr_id = ?"
-        scan_count = execute_query(q_cnt, (q['id'],), fetch_one=True)
-        scan_count_val = list(scan_count.values())[0] if isinstance(scan_count, dict) else scan_count[0]
-        q['scan_count'] = scan_count_val
+        q['scan_count']       = int(q['scan_count'])
         result.append(q)
         
     return jsonify(result)
@@ -532,38 +538,35 @@ def get_auth_keys():
     roles_to_show = ['admin', 'moderator', 'user'] if role == 'admin' else ['moderator', 'user']
     is_pg = bool(DATABASE_URL and HAS_PG)
 
-    with get_db_connection() as conn:
-        if is_pg:
-            cur = conn.cursor(cursor_factory=RealDictCursor)
-        else:
-            cur = conn.cursor()
-            
-        for r in roles_to_show:
-            q_key = "SELECT id, key, role, max_devices, note FROM keys WHERE role = %s" if is_pg else "SELECT id, key, role, max_devices, note FROM keys WHERE role = ?"
-            cur.execute(q_key, (r,))
-            rows = cur.fetchall()
-            
-            for row in rows:
-                if not is_pg:
-                    row = dict(row)
-                
-                # Fetch devices
-                q_dev = "SELECT device_id FROM devices WHERE key_id = %s" if is_pg else "SELECT device_id FROM devices WHERE key_id = ?"
-                # Temporary new cursor for devices
-                dev_cur = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
-                dev_cur.execute(q_dev, (row['id'],))
-                dev_rows = dev_cur.fetchall()
-                dev_cur.close()
-                
-                devices = [d['device_id'] if is_pg else d[0] for d in dev_rows]
-                
-                result[f"{r}_keys"].append({
-                    'key':         row['key'],
-                    'role':        row['role'],
-                    'max_devices': row['max_devices'],
-                    'note':        row['note'] or '',
-                    'devices':     devices,
-                })
+    # Fetch keys and their devices using a single LEFT JOIN
+    # Placing placeholders based on driver type
+    placeholders = ','.join(['%s' if is_pg else '?'] * len(roles_to_show))
+    query = f"""
+        SELECT k.id, k.key, k.role, k.max_devices, k.note, d.device_id
+        FROM keys k
+        LEFT JOIN devices d ON k.id = d.key_id
+        WHERE k.role IN ({placeholders})
+    """
+    rows = execute_query(query, tuple(roles_to_show), fetch_all=True)
+
+    # Group the rows by key
+    keys_map = {}
+    for row in rows:
+        row_dict = dict(row)
+        k_key = row_dict['key']
+        if k_key not in keys_map:
+            keys_map[k_key] = {
+                'key':         k_key,
+                'role':        row_dict['role'],
+                'max_devices': row_dict['max_devices'],
+                'note':        row_dict['note'] or '',
+                'devices':     []
+            }
+        if row_dict['device_id']:
+            keys_map[k_key]['devices'].append(row_dict['device_id'])
+
+    for k_info in keys_map.values():
+        result[f"{k_info['role']}_keys"].append(k_info)
 
     return jsonify(result)
 
