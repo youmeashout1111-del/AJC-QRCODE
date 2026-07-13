@@ -337,32 +337,39 @@
           </div>
 
           <!-- Filters Bar -->
-          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-glass); border-radius: 12px; padding: 12px 15px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <label for="filter-log-date" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0;">កាលបរិច្ឆេទ៖</label>
-              <input type="date" id="filter-log-date" class="form-group" style="margin-bottom: 0; max-width: 140px; padding: 6px 10px; font-size: 0.8rem; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff;">
+          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-glass); border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; width: 100%;">
+            <!-- Date Filter -->
+            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 130px;">
+              <label for="filter-log-date" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0; font-weight: 600;">កាលបរិច្ឆេទ</label>
+              <input type="date" id="filter-log-date" class="form-group" style="margin-bottom: 0; width: 100%; padding: 6px 10px; font-size: 0.8rem; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff; height: 36px; border-radius: 6px;">
             </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <label for="filter-log-team" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0;">Sales Team៖</label>
-              <select id="filter-log-team" class="form-group" style="margin-bottom: 0; max-width: 140px; padding: 6px 10px; font-size: 0.8rem; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff; height: 34px;">
+            <!-- Sales Team Filter -->
+            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 130px;">
+              <label for="filter-log-team" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0; font-weight: 600;">Sales Team</label>
+              <select id="filter-log-team" class="form-group" style="margin-bottom: 0; width: 100%; padding: 6px 10px; font-size: 0.8rem; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff; height: 36px; border-radius: 6px; cursor: pointer;">
                 <option value="">-- ទាំងអស់ --</option>
               </select>
             </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <label for="filter-log-depot" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0;">Depot៖</label>
-              <select id="filter-log-depot" class="form-group" style="margin-bottom: 0; max-width: 140px; padding: 6px 10px; font-size: 0.8rem; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff; height: 34px;">
+            <!-- Depot Filter -->
+            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 130px;">
+              <label for="filter-log-depot" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0; font-weight: 600;">Depot</label>
+              <select id="filter-log-depot" class="form-group" style="margin-bottom: 0; width: 100%; padding: 6px 10px; font-size: 0.8rem; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff; height: 36px; border-radius: 6px; cursor: pointer;">
                 <option value="">-- ទាំងអស់ --</option>
               </select>
             </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <label for="filter-log-market" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0;">ផ្សារ / ទីតាំង៖</label>
-              <select id="filter-log-market" class="form-group" style="margin-bottom: 0; max-width: 160px; padding: 6px 10px; font-size: 0.8rem; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff; height: 34px;">
+            <!-- Market/Location Filter -->
+            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1.5; min-width: 160px;">
+              <label for="filter-log-market" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0; font-weight: 600;">ផ្សារ / ទីតាំង</label>
+              <select id="filter-log-market" class="form-group" style="margin-bottom: 0; width: 100%; padding: 6px 10px; font-size: 0.8rem; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff; height: 36px; border-radius: 6px; cursor: pointer;">
                 <option value="">-- ទាំងអស់ --</option>
               </select>
             </div>
-            <button id="btn-clear-log-filters" class="btn btn-secondary btn-sm" style="padding: 6px 12px; font-size: 0.8rem;" title="សម្អាតការចម្រុះ">
-              <i class="fa-solid fa-filter-circle-xmark"></i> សម្អាត
-            </button>
+            <!-- Clear Button -->
+            <div style="flex: 0.5; min-width: 90px; display: flex;">
+              <button id="btn-clear-log-filters" class="btn btn-secondary btn-sm" style="padding: 0 15px; font-size: 0.8rem; height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 6px; width: 100%;" title="សម្អាតការចម្រុះ">
+                <i class="fa-solid fa-filter-circle-xmark"></i> សម្អាត
+              </button>
+            </div>
           </div>
 
           <!-- GPS Secure Context Alert Info -->
