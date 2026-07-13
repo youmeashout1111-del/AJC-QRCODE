@@ -496,11 +496,15 @@ def delete_qrcode(qr_id):
         return jsonify({'error': 'គ្មានសិទ្ធិលុប QR Code ឡើយ!'}), 403
 
     is_pg = bool(DATABASE_URL and HAS_PG)
-    q_del = "DELETE FROM qrcodes WHERE id = %s" if is_pg else "DELETE FROM qrcodes WHERE id = ?"
-    
+    q_del       = "DELETE FROM qrcodes WHERE id = %s"       if is_pg else "DELETE FROM qrcodes WHERE id = ?"
+    q_del_scans = "DELETE FROM scans   WHERE qr_id = %s"    if is_pg else "DELETE FROM scans   WHERE qr_id = ?"
+
     conn = get_db_connection()
     try:
         cur = conn.cursor()
+        # Delete all scans associated with this QR code first
+        cur.execute(q_del_scans, (qr_id,))
+        # Then delete the QR code itself
         cur.execute(q_del, (qr_id,))
         rowcount = cur.rowcount
         conn.commit()
