@@ -278,34 +278,60 @@ async function handleStep1Submit(e) {
 async function startCameraFlow() {
   document.getElementById('photo-source-selector').classList.add('hidden');
   document.getElementById('camera-section').classList.remove('hidden');
-  
-  try {
-    let stream;
+
+  // Detect iOS Safari
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+  // iOS Safari needs specific constraints — try back camera first (most natural for photo)
+  const constraintsList = [
+    // 1st attempt: back camera (environment) — best for taking photos on iPhone
+    { video: { facingMode: { ideal: 'environment' } }, audio: false },
+    // 2nd attempt: front camera — fallback
+    { video: { facingMode: { ideal: 'user' } }, audio: false },
+    // 3rd attempt: any camera, no constraints
+    { video: true, audio: false }
+  ];
+
+  let stream = null;
+  let lastError = null;
+
+  for (const constraints of constraintsList) {
     try {
-      // First try front-facing user camera with basic constraints
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
-        audio: false
-      });
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      break; // success — stop trying
     } catch (e) {
-      console.warn("Front camera constraints failed, trying generic camera constraints:", e);
-      // Fallback: request any available camera feed
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: false
-      });
+      lastError = e;
+      console.warn('Camera constraint attempt failed:', constraints, e.name, e.message);
     }
-    
-    videoStream = stream;
-    const video = document.getElementById('video-stream');
-    video.srcObject = videoStream;
-    video.play();
-  } catch (error) {
-    console.error('Camera access error:', error);
-    showToast('មិនអាចបើកកាមេរ៉ាបានទេ! សូមពិនិត្យ Permission ឬប្រើការបញ្ចូលរូបភាពជំនួស!', 'error');
+  }
+
+  if (!stream) {
+    console.error('All camera attempts failed:', lastError);
+    // Show specific error message for iOS Permission denied
+    if (lastError && (lastError.name === 'NotAllowedError' || lastError.name === 'PermissionDeniedError')) {
+      showToast('គ្មានសិទ្ធិចូលប្រើកាមេរ៉ា! សូមចូល Settings → Safari → Camera → Allow', 'error');
+    } else if (lastError && lastError.name === 'NotFoundError') {
+      showToast('រកមិនឃើញកាមេរ៉ានៅលើឧបករណ៍នេះ!', 'error');
+    } else {
+      showToast('មិនអាចបើកកាមេរ៉ាបានទេ! សូមសាកល្បងប្រើប្រាស់ Safari ឬប្រើ "ជ្រើសរើសរូបភាព" ជំនួស!', 'error');
+    }
     stopCameraFlow();
+    return;
+  }
+
+  videoStream = stream;
+  const video = document.getElementById('video-stream');
+  video.srcObject = videoStream;
+
+  // iOS Safari requires explicit play() call after setting srcObject
+  try {
+    await video.play();
+  } catch (playErr) {
+    // On iOS, play() can fail silently — this is OK as autoplay + playsinline handles it
+    console.warn('video.play() warning (non-fatal on iOS):', playErr.message);
   }
 }
+
 
 // Stop Camera Stream
 function stopCameraFlow() {
