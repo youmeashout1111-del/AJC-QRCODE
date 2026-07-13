@@ -442,11 +442,8 @@ def create_qrcode():
     capture_location = 1 if request.form.get('capture_location') == 'true' else 0
 
     expires_at       = request.form.get('expires_at', '').strip()
-
     if not expires_at:
-        # Default to 1 year from now (YYYY-MM-DD)
-        from datetime import date
-        expires_at = (date.today().replace(year=date.today().year + 1)).isoformat()
+        expires_at = None
 
     if not qr_id or not name:
         return jsonify({'error': 'មេត្តាបញ្ចូល Sales Team និង Depot!'}), 400
@@ -544,7 +541,7 @@ def update_qrcode(qr_id):
     data = request.json or {}
     expires_at = data.get('expires_at', '').strip()
     if not expires_at:
-        return jsonify({'error': 'មេត្តាបញ្ចូលថ្ងៃខែឆ្នាំហួសកំណត់!'}), 400
+        expires_at = None
 
     is_pg = bool(DATABASE_URL and HAS_PG)
     q_upd = "UPDATE qrcodes SET expires_at = %s WHERE id = %s" if is_pg else "UPDATE qrcodes SET expires_at = ? WHERE id = ?"
