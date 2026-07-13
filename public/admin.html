@@ -159,6 +159,12 @@
             <input type="text" id="qr-default-location" name="default_location" placeholder="ឧ. ផ្សារអូរឫស្សី Stall A12">
           </div>
 
+          <!-- Expiration Date -->
+          <div class="form-group">
+            <label for="qr-expires-at">ថ្ងៃខែឆ្នាំហួសកំណត់ (Expiration Date) *</label>
+            <input type="date" id="qr-expires-at" name="expires_at" required>
+          </div>
+
           <!-- Restored Sidebar Frame Manager with Instant Upload & Live List -->
           <div class="form-group" id="sidebar-frame-manager-group" style="display: none; border: 1px solid rgba(220, 20, 30, 0.15); padding: 12px; border-radius: 8px; background: #ffffff; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);">
             <label style="margin-bottom: 8px; color: #1e293b; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
@@ -263,7 +269,7 @@
       </aside>
 
       <!-- Right Panel: Tabs, List, Logs -->
-      <main class="glass-panel" style="min-height: 600px;">
+      <main class="glass-panel" style="min-height: 600px; display: flex; flex-direction: column;">
         
         <!-- Tabs Header -->
         <div class="tabs">
@@ -440,9 +446,9 @@
           </div>
 
           <!-- Keys List Container -->
-          <div class="keys-lists-flex-row" style="display: flex; gap: 20px; width: 100%; flex-wrap: nowrap; margin-bottom: 25px;">
+          <div class="keys-lists-flex-row" style="display: flex; gap: 20px; width: 100%; flex-wrap: nowrap; margin-bottom: 25px; flex: 1; min-height: 0;">
             <!-- Admin Keys List -->
-            <div id="admin-keys-card" class="glass-panel" style="flex: 1; min-width: 0; padding: 15px; display: flex; flex-direction: column; height: 350px;">
+            <div id="admin-keys-card" class="glass-panel" style="flex: 1; min-width: 0; padding: 15px; display: flex; flex-direction: column; height: 100%;">
               <h4 style="border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 10px; margin-bottom: 12px; color: #ff1a2b; flex-shrink: 0; display: flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-user-shield"></i> Admin Keys
               </h4>
@@ -452,7 +458,7 @@
             </div>
 
             <!-- Moderator Keys List -->
-            <div id="moderator-keys-card" class="glass-panel" style="flex: 1; min-width: 0; padding: 15px; display: flex; flex-direction: column; height: 350px;">
+            <div id="moderator-keys-card" class="glass-panel" style="flex: 1; min-width: 0; padding: 15px; display: flex; flex-direction: column; height: 100%;">
               <h4 style="border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 10px; margin-bottom: 12px; color: #ff3344; flex-shrink: 0; display: flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-user-gear"></i> Moderator Keys
               </h4>
@@ -462,7 +468,7 @@
             </div>
 
             <!-- User Keys List -->
-            <div id="user-keys-card" class="glass-panel" style="flex: 1; min-width: 0; padding: 15px; display: flex; flex-direction: column; height: 350px;">
+            <div id="user-keys-card" class="glass-panel" style="flex: 1; min-width: 0; padding: 15px; display: flex; flex-direction: column; height: 100%;">
               <h4 style="border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 10px; margin-bottom: 12px; color: #4CAF50; flex-shrink: 0; display: flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-user"></i> User Keys
               </h4>
@@ -482,6 +488,68 @@
   <!-- Toast Notifications Container -->
   <div id="toast-container" class="toast-container"></div>
 
+  <!-- Edit QR Code Modal (Hidden initially) -->
+  <div id="edit-qr-modal" class="hidden" style="
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  ">
+    <div class="glass-panel" style="width: 420px; max-width: 90%; background: #ffffff; padding: 25px; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.18); border-color: rgba(220, 20, 30, 0.15);">
+      <h3 style="margin-bottom: 20px; display: flex; align-items: center; gap: 8px; color: #ff3344; font-size: 1.15rem; font-weight: 700;">
+        <i class="fa-solid fa-pen-to-square"></i> កែប្រែកាលបរិច្ឆេទហួសកំណត់
+      </h3>
+      <form id="edit-qr-form">
+        <input type="hidden" id="edit-qr-id" name="id">
+        
+        <div class="form-group" style="margin-bottom: 18px;">
+          <label style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">Sales Team / ID</label>
+          <input type="text" id="edit-qr-id-display" disabled style="
+            background: #f1f5f9;
+            color: #64748b;
+            cursor: not-allowed;
+            border: 1px solid rgba(0,0,0,0.12);
+            height: 42px;
+            margin-bottom: 0;
+          ">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 18px;">
+          <label style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">Depot Name</label>
+          <input type="text" id="edit-qr-name-display" disabled style="
+            background: #f1f5f9;
+            color: #64748b;
+            cursor: not-allowed;
+            border: 1px solid rgba(0,0,0,0.12);
+            height: 42px;
+            margin-bottom: 0;
+          ">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 22px;">
+          <label for="edit-qr-expires-at" style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">ថ្ងៃខែឆ្នាំហួសកំណត់ (Expiration Date) *</label>
+          <input type="date" id="edit-qr-expires-at" name="expires_at" required style="
+            border: 1px solid rgba(0,0,0,0.15);
+            height: 42px;
+            margin-bottom: 0;
+            background: #ffffff;
+            color: #1e293b;
+          ">
+        </div>
+
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+          <button type="button" onclick="closeEditQRModal()" class="btn btn-secondary" style="height: 40px; padding: 0 16px; font-size: 0.85rem;">បដិសេធ</button>
+          <button type="submit" class="btn btn-primary" style="height: 40px; padding: 0 20px; font-size: 0.85rem; background: linear-gradient(135deg, #ff3344, #8b0000); border: none;">រក្សាទុក</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Local JS Libraries -->
   <script src="js/qrcode.min.js"></script>
   <script src="js/jszip.min.js"></script>
@@ -492,4 +560,3 @@
   <script src="js/admin.js?v=2.0"></script>
 </body>
 </html>
-
