@@ -37,6 +37,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   setupEventListeners();
   
+  // Align Heights
+  window.addEventListener('resize', () => {
+    if (window.alignDashboardHeights) window.alignDashboardHeights();
+  });
+  if (window.alignDashboardHeights) window.alignDashboardHeights();
+
   // Start auto-refreshing scan logs every 4 seconds for "real-time" experience
   autoRefreshInterval = setInterval(fetchLogsAndStatsOnly, 4000);
 });
@@ -366,6 +372,56 @@ function setupEventListeners() {
     });
   }
 
+  // Set default expiration date picker value (1 year from today) on create form
+  const expiresInput = document.getElementById('qr-expires-at');
+  if (expiresInput) {
+    const today = new Date();
+    today.setFullYear(today.getFullYear() + 1);
+    expiresInput.value = today.toISOString().split('T')[0];
+  }
+
+  // Edit QR Form Submission
+  const editQRForm = document.getElementById('edit-qr-form');
+  if (editQRForm) {
+    editQRForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('edit-qr-id').value;
+      const expiresAt = document.getElementById('edit-qr-expires-at').value;
+      const submitBtn = editQRForm.querySelector('button[type="submit"]');
+      const origHtml = submitBtn.innerHTML;
+      
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> រក្សាទុក...`;
+      
+      try {
+        const res = await fetch(`/api/qrcodes/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': getAuthKey(),
+            'X-Device-ID': getDeviceID()
+          },
+          body: JSON.stringify({ expires_at: expiresAt })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+          showToast(data.error || 'កែប្រែបរាជ័យ!', 'error');
+          return;
+        }
+        
+        showToast('បានកែប្រែកាលបរិច្ឆេទហួសកំណត់ជោគជ័យ!', 'success');
+        closeEditQRModal();
+        fetchData(); // Reload grid
+      } catch (err) {
+        console.error(err);
+        showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = origHtml;
+      }
+    });
+  }
 }
 
 // Fetch all QR codes, scan logs and update UI
@@ -399,6 +455,7 @@ async function fetchData() {
     updateStats();
     renderQRCodes();
     renderScanLogs();
+    if (window.alignDashboardHeights) window.alignDashboardHeights();
   } catch (error) {
     console.error('Fetch error:', error);
     showToast('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!', 'error');
@@ -598,8 +655,12 @@ function renderQRCodes() {
           <canvas id="canvas-qr-${qr.id}" style="width:34px;height:34px;display:block;"></canvas>
         </div>
       </td>
-      <td style="font-weight:700;vertical-align:middle;color:var(--text-main);padding:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-          title="${escapeHTML(qr.name)}">${escapeHTML(qr.name)}</td>
+      <td style="vertical-align:middle;padding:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+        <div style="font-weight:700;color:var(--text-main);" title="${escapeHTML(qr.name)}">${escapeHTML(qr.name)}</div>
+        <div style="font-size:0.7rem;color:#ff3344;margin-top:2px;" title="ថ្ងៃហួសកំណត់">
+          <i class="fa-regular fa-calendar-times" style="opacity:0.75;"></i> ${qr.expires_at ? qr.expires_at : 'No Limit'}
+        </div>
+      </td>
       <td style="vertical-align:middle;padding:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
           title="${escapeHTML(qr.id)}">
         <span class="badge-id" style="font-size:0.78rem;">${escapeHTML(qr.id)}</span>
@@ -625,6 +686,12 @@ function renderQRCodes() {
             <i class="fa-solid fa-file-code"></i><span class="btn-label">SVG</span>
           </button>
           ${isAdmin ? `
+          <button type="button" class="btn btn-secondary btn-sm"
+            style="padding:5px 8px;font-size:0.75rem;min-width:28px;height:28px;border-color:rgba(0,0,0,0.12);background:#fff;"
+            onclick="openEditQRModal('${qr.id}', '${escapeHTML(qr.name)}', '${qr.expires_at || ''}')"
+            title="កែប្រែថ្ងៃហួសកំណត់">
+            <i class="fa-solid fa-pen-to-square" style="color:#ffb703;"></i>
+          </button>
           <button type="button" class="btn btn-danger btn-sm"
             style="padding:5px 8px;font-size:0.75rem;min-width:28px;height:28px;"
             onclick="deleteQRCode('${qr.id}')"
@@ -1244,6 +1311,19 @@ async function deleteFilteredLogs() {
   }
 }
 
+// Align Right Panel height dynamically to match Left Panel (Create QR) height on desktop
+window.alignDashboardHeights = function() {
+  const aside = document.querySelector('.dashboard-grid > aside');
+  const main = document.querySelector('.dashboard-grid > main');
+  if (aside && main) {
+    if (window.innerWidth > 1100) {
+      main.style.height = `${aside.offsetHeight}px`;
+    } else {
+      main.style.height = 'auto';
+    }
+  }
+};
+
 // Tab switcher
 window.switchTab = function(tabId) {
   const tabs = document.querySelectorAll('.tab-btn');
@@ -1262,6 +1342,11 @@ window.switchTab = function(tabId) {
       content.classList.add('active');
     }
   });
+
+  if (window.alignDashboardHeights) {
+    window.alignDashboardHeights();
+  }
+
   
   // Refresh layout
   if (tabId === 'qr-list-tab') {
@@ -1602,6 +1687,7 @@ async function loadKeysData() {
         userList.appendChild(li);
       });
     }
+    if (window.alignDashboardHeights) window.alignDashboardHeights();
   } catch (err) {
     console.error(err);
   }
@@ -1918,6 +2004,7 @@ function renderFrames() {
     `;
     listContainer.appendChild(row);
   });
+  if (window.alignDashboardHeights) window.alignDashboardHeights();
 }
 
 async function handleSidebarFrameUpload(file) {
@@ -2138,5 +2225,26 @@ async function updateKeyValue(keyVal, roleVal, spanEl) {
   });
 }
 
+// Edit QR Expiration modal handlers
+window.openEditQRModal = function(id, name, expiresAt) {
+  const modal = document.getElementById('edit-qr-modal');
+  if (!modal) return;
+  
+  document.getElementById('edit-qr-id').value = id;
+  document.getElementById('edit-qr-id-display').value = id;
+  document.getElementById('edit-qr-name-display').value = name;
+  document.getElementById('edit-qr-expires-at').value = expiresAt ? expiresAt.substring(0, 10) : '';
+  
+  modal.classList.remove('hidden');
+};
+
+window.closeEditQRModal = function() {
+  const modal = document.getElementById('edit-qr-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+};
+
 window.updateKeyValue = updateKeyValue;
 window.loadRecoverySetting = loadRecoverySetting;
+
