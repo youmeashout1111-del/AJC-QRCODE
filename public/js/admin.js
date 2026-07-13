@@ -73,7 +73,8 @@ async function validateAndLoad(key) {
     if (currentUserRole === 'admin' || currentUserRole === 'moderator') {
       await Promise.all([
         loadKeysData(),
-        loadFramesData()
+        loadFramesData(),
+        loadRecoverySetting()
       ]);
     }
     
@@ -294,11 +295,73 @@ function setupEventListeners() {
   document.getElementById('btn-delete-selected-logs').addEventListener('click', deleteSelectedLogs);
   document.getElementById('btn-delete-filtered-logs').addEventListener('click', deleteFilteredLogs);
 
-  // Manual refresh button
-  document.getElementById('btn-refresh-logs').addEventListener('click', () => {
-    fetchData();
     showToast('បានផ្ទុកទិន្នន័យថ្មីៗឡើងវិញ!', 'success');
   });
+
+  // Forgot Key click
+  const forgetKeyBtn = document.getElementById('btn-forget-key');
+  if (forgetKeyBtn) {
+    forgetKeyBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const msgContainer = document.getElementById('recovery-message-container');
+      if (!msgContainer) return;
+      
+      if (msgContainer.classList.contains('hidden')) {
+        try {
+          forgetKeyBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> កំពុងទាញយក...`;
+          const res = await fetch('/api/settings/recovery');
+          const data = await res.json();
+          msgContainer.textContent = data.value || 'សូមទាក់ទង Admin';
+          msgContainer.classList.remove('hidden');
+        } catch (err) {
+          console.error(err);
+          showToast('មិនអាចទាញយកព័ត៌មានជំនួយបានទេ!', 'error');
+        } finally {
+          forgetKeyBtn.innerHTML = `<i class="fa-solid fa-circle-question"></i> ភ្លេចលេខកូដសម្ងាត់? (Forgot Key?)`;
+        }
+      } else {
+        msgContainer.classList.add('hidden');
+      }
+    });
+  }
+
+  // Recovery Contact Settings form submit
+  const recoveryForm = document.getElementById('recovery-settings-form');
+  if (recoveryForm) {
+    recoveryForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const inputVal = document.getElementById('recovery-contact-input').value.trim();
+      const submitBtn = recoveryForm.querySelector('button[type="submit"]');
+      const origHtml = submitBtn.innerHTML;
+      
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> កំពុងរក្សាទុក...`;
+      
+      try {
+        const res = await fetch('/api/settings/recovery', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': getAuthKey(),
+            'X-Device-ID': getDeviceID()
+          },
+          body: JSON.stringify({ value: inputVal })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showToast(data.error || 'រក្សាទុកបរាជ័យ!', 'error');
+          return;
+        }
+        showToast('បានរក្សាទុកព័ត៌មានទំនាក់ទំនងជោគជ័យ!', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = origHtml;
+      }
+    });
+  }
 
 }
 
@@ -1243,9 +1306,13 @@ async function loadKeysData() {
             ? `<span class="note-editable" data-note="${escapeHTML(item.note)}" onclick="updateKeyNote('${escapeHTML(item.key)}', 'admin', this)" style="color: #00e5ff; cursor: pointer; border-bottom: 1px dashed rgba(0,229,255,0.4); padding-bottom: 1px;" title="ចុចដើម្បីកែប្រែ">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>`
             : `<span class="note-editable" data-note="" onclick="updateKeyNote('${escapeHTML(item.key)}', 'admin', this)" style="color: rgba(255,255,255,0.25); cursor: pointer; font-style: italic;" title="ចុចដើម្បីបន្ថែមឈ្មោះ">+ បន្ថែមឈ្មោះ</span>`;
           
+          const keyHtml = currentUserRole === 'admin'
+            ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'admin', this)" style="font-family: monospace; font-size: 0.95rem; color: #fff; cursor: pointer; border-bottom: 1px dashed rgba(255,255,255,0.25); padding-bottom: 1px;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
+            : `<span style="font-family: monospace; font-size: 0.95rem; color: #fff;">${escapeHTML(item.key)}</span>`;
+
           li.innerHTML = `
             <div style="display: flex; flex-direction: column; gap: 4px;">
-              <span style="font-family: monospace; font-size: 0.95rem; color: #fff;">${escapeHTML(item.key)}</span>
+              ${keyHtml}
               <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: var(--text-muted);">
                   <span>ឧបករណ៍៖ ${deviceCount} / </span>
@@ -1305,9 +1372,13 @@ async function loadKeysData() {
           // Moderators can see their keys but only admin can delete moderator keys
           const canDeleteMod = currentUserRole === 'admin';
           
+          const keyHtml = currentUserRole === 'admin'
+            ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'moderator', this)" style="font-family: monospace; font-size: 0.95rem; color: #fff; cursor: pointer; border-bottom: 1px dashed rgba(255,255,255,0.25); padding-bottom: 1px;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
+            : `<span style="font-family: monospace; font-size: 0.95rem; color: #fff;">${escapeHTML(item.key)}</span>`;
+
           li.innerHTML = `
             <div style="display: flex; flex-direction: column; gap: 4px;">
-              <span style="font-family: monospace; font-size: 0.95rem; color: #fff;">${escapeHTML(item.key)}</span>
+              ${keyHtml}
               <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: var(--text-muted);">
                   <span>ឧបករណ៍៖ ${deviceCount} / </span>
@@ -1386,9 +1457,13 @@ async function loadKeysData() {
           `;
         }
         
+        const keyHtml = (!isMasked && (currentUserRole === 'admin' || currentUserRole === 'moderator'))
+          ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'user', this)" style="font-family: monospace; font-size: 0.95rem; color: #fff; cursor: pointer; border-bottom: 1px dashed rgba(255,255,255,0.25); padding-bottom: 1px;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
+          : `<span style="font-family: monospace; font-size: 0.95rem; color: #fff;">${escapeHTML(item.key)}</span>`;
+
         li.innerHTML = `
           <div style="display: flex; flex-direction: column; gap: 4px;">
-            <span style="font-family: monospace; font-size: 0.95rem; color: #fff;">${escapeHTML(item.key)}</span>
+            ${keyHtml}
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               ${limitWidgetHtml}
               ${noteHtml}
@@ -1859,3 +1934,98 @@ window.setActiveFrame = setActiveFrame;
 window.deleteSingleFrame = deleteSingleFrame;
 window.loadFramesData = loadFramesData;
 window.handleSidebarFrameUpload = handleSidebarFrameUpload;
+
+// ── Key Value Change & Recovery Helper ────────────────────────────────────────
+
+async function loadRecoverySetting() {
+  if (currentUserRole !== 'admin' && currentUserRole !== 'moderator') return;
+  try {
+    const res = await fetch('/api/settings/recovery');
+    const data = await res.json();
+    const inputEl = document.getElementById('recovery-contact-input');
+    if (inputEl) inputEl.value = data.value || '';
+  } catch (err) {
+    console.error('Error loading recovery setting:', err);
+  }
+}
+
+async function updateKeyValue(keyVal, roleVal, spanEl) {
+  if (!spanEl) return;
+  if (spanEl.querySelector('input')) return;
+  
+  const originalHtml = spanEl.innerHTML;
+  
+  spanEl.innerHTML = `
+    <input type="text" value="${escapeHTML(keyVal)}"
+      style="background: rgba(11,7,22,0.7); border: 1px solid rgba(0,229,255,0.4); color: #fff;
+             font-family: monospace; border-radius: 4px; padding: 2px 6px; font-size: 0.85rem; width: 140px; outline: none; margin-bottom: 0;"
+      class="key-inline-input"
+    >
+    <button style="background: transparent; border: none; color: #00e5ff; cursor: pointer; padding: 0 4px; font-size: 0.8rem;" title="រក្សាទុក" class="key-save-btn">
+      <i class="fa-solid fa-check"></i>
+    </button>
+    <button style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0 4px; font-size: 0.8rem;" title="បោះបង់" class="key-cancel-btn">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  `;
+  
+  const input = spanEl.querySelector('.key-inline-input');
+  const saveBtn = spanEl.querySelector('.key-save-btn');
+  const cancelBtn = spanEl.querySelector('.key-cancel-btn');
+  
+  input.focus();
+  input.select();
+  
+  async function saveKey() {
+    const newKey = input.value.trim();
+    if (!newKey) {
+      showToast('លេខសម្ងាត់មិនអាចទទេបានទេ!', 'error');
+      return;
+    }
+    
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    
+    try {
+      const res = await fetch('/api/auth/keys/update-key', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': getAuthKey(),
+          'X-Device-ID': getDeviceID()
+        },
+        body: JSON.stringify({ old_key: keyVal, role: roleVal, new_key: newKey })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        showToast(data.error || 'មិនអាចកែប្រែបានឡើយ!', 'error');
+        spanEl.innerHTML = originalHtml;
+        return;
+      }
+      
+      showToast('បានប្តូរលេខសម្ងាត់ដោយជោគជ័យ!', 'success');
+      
+      // Update session key in localStorage if we just changed our own logged-in key
+      if (keyVal === getAuthKey()) {
+        localStorage.setItem('ajc_security_key', newKey);
+      }
+      
+      loadKeysData();
+    } catch (err) {
+      console.error(err);
+      spanEl.innerHTML = originalHtml;
+      showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
+    }
+  }
+  
+  saveBtn.addEventListener('click', saveKey);
+  cancelBtn.addEventListener('click', () => { spanEl.innerHTML = originalHtml; });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); saveKey(); }
+    if (e.key === 'Escape') { spanEl.innerHTML = originalHtml; }
+  });
+}
+
+window.updateKeyValue = updateKeyValue;
+window.loadRecoverySetting = loadRecoverySetting;

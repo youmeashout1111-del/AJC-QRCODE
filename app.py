@@ -203,6 +203,12 @@ def init_db():
             is_active   INTEGER DEFAULT 0,
             created_at  TEXT
         );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS settings (
+            key    TEXT PRIMARY KEY,
+            value  TEXT
+        );
         """
     ]
     
@@ -215,6 +221,24 @@ def init_db():
     except Exception as e:
         conn.rollback()
         print(f"Database bootstrap failed: {e}")
+    finally:
+        conn.close()
+
+    # Seed default settings
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        is_pg = bool(DATABASE_URL and HAS_PG)
+        q_chk_settings = "SELECT 1 FROM settings WHERE key = %s" if is_pg else "SELECT 1 FROM settings WHERE key = ?"
+        cur.execute(q_chk_settings, ('recovery_contact',))
+        if not cur.fetchone():
+            q_ins_settings = "INSERT INTO settings (key, value) VALUES (%s, %s)" if is_pg else "INSERT INTO settings (key, value) VALUES (?, ?)"
+            cur.execute(q_ins_settings, ('recovery_contact', 'សូមទាក់ទង Admin តាមរយៈ Telegram: @admin ឬ លេខទូរស័ព្ទ: 096 000 0000'))
+        conn.commit()
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Database settings seeding failed: {e}")
     finally:
         conn.close()
 
@@ -624,6 +648,7 @@ def get_auth_keys():
         k_key = row_dict['key']
         if k_key not in keys_map:
             keys_map[k_key] = {
+                'id':          row_dict['id'],
                 'key':         k_key,
                 'role':        row_dict['role'],
                 'max_devices': row_dict['max_devices'],
@@ -803,6 +828,87 @@ def update_auth_key_note():
         conn.close()
 
     return jsonify({'message': 'បានកែប្រែឈ្មោះដោយជោគជ័យ!'})
+
+@app.route('/api/auth/keys/update-key', methods=['POST'])
+def update_auth_key():
+    auth_key = request.headers.get('Authorization')
+    role     = get_role_by_key(auth_key)
+    if not role or role not in ['admin', 'moderator']:
+        return jsonify({'error': 'គ្មានសិទ្ធិចូលដំណើរការ!'}), 403
+
+    data = request.json or {}
+    old_key = data.get('old_key', '').strip()
+    new_key = data.get('new_key', '').strip()
+    target_role = data.get('role', '')
+
+    if not old_key or not new_key or not target_role:
+        return jsonify({'error': 'ទិន្នន័យមិនគ្រប់គ្រាន់!'}), 400
+
+    # If the user is a moderator, they cannot change admin or moderator keys
+    if role == 'moderator' and target_role != 'user':
+        return jsonify({'error': 'Moderator អាចកែប្រែលេខសម្ងាត់បានតែរបស់ User Key ប៉ុណ្ណោះ!'}), 403
+
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    
+    # Check if the new key already exists (must be unique)
+    q_chk = "SELECT 1 FROM keys WHERE key = %s AND key != %s" if is_pg else "SELECT 1 FROM keys WHERE key = ? AND key != ?"
+    if execute_query(q_chk, (new_key, old_key), fetch_one=True):
+        return jsonify({'error': 'លេខសម្ងាត់នេះមានរួចហើយ! សូមប្រើលេខផ្សេង។'}), 400
+
+    # Update the key string
+    q_upd = "UPDATE keys SET key = %s WHERE key = %s AND role = %s" if is_pg else "UPDATE keys SET key = ? WHERE key = ? AND role = ?"
+    
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(q_upd, (new_key, old_key, target_role))
+        rowcount = cur.rowcount
+        conn.commit()
+        if rowcount == 0:
+            return jsonify({'error': 'រកមិនឃើញ Key នេះក្នុងប្រព័ន្ធឡើយ!'}), 404
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': f'Database error: {e}'}), 500
+    finally:
+        conn.close()
+
+    return jsonify({'message': 'បានប្តូរលេខសម្ងាត់ដោយជោគជ័យ!'})
+
+@app.route('/api/settings/recovery', methods=['GET'])
+def get_recovery_setting():
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q = "SELECT value FROM settings WHERE key = %s" if is_pg else "SELECT value FROM settings WHERE key = ?"
+    row = execute_query(q, ('recovery_contact',), fetch_one=True)
+    val = row['value'] if row else 'សូមទាក់ទង Admin តាមរយៈ Telegram: @admin'
+    return jsonify({'value': val})
+
+@app.route('/api/settings/recovery', methods=['POST'])
+def save_recovery_setting():
+    auth_key = request.headers.get('Authorization')
+    role     = get_role_by_key(auth_key)
+    if not role or role not in ['admin', 'moderator']:
+        return jsonify({'error': 'គ្មានសិទ្ធិចូលដំណើរការ!'}), 403
+
+    data = request.json or {}
+    val = data.get('value', '').strip()
+    if not val:
+        return jsonify({'error': 'ព័ត៌មានជំនួយមិនអាចទទេបានទេ!'}), 400
+
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_upd = "UPDATE settings SET value = %s WHERE key = %s" if is_pg else "UPDATE settings SET value = ? WHERE key = ?"
+    
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(q_upd, (val, 'recovery_contact'))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': f'Database error: {e}'}), 500
+    finally:
+        conn.close()
+
+    return jsonify({'message': 'បានរក្សាទុកព័ត៌មានទំនាក់ទំនងដោយជោគជ័យ!'})
 
 # ── Scan Record ───────────────────────────────────────────────────────────────
 

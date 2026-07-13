@@ -21,7 +21,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: radial-gradient(circle at center, #1b0a2d 0%, #080310 100%);
+      background: radial-gradient(circle at center, #eef1f6 0%, #d1d5db 100%);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -29,10 +29,8 @@
       padding: 20px;
     }
     .login-card {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      background: #ffffff;
+      border: 1px solid rgba(220, 20, 30, 0.2);
       border-radius: 20px;
     }
   </style>
@@ -46,25 +44,29 @@
         document.getElementById('login-overlay').classList.add('hidden');
       }
     </script>
-    <div class="glass-panel login-card" style="width: 100%; max-width: 400px; padding: 30px; text-align: center; border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 15px 35px rgba(0,0,0,0.5);">
-      <div style="font-size: 3rem; color: #00f2fe; margin-bottom: 15px; text-shadow: 0 0 20px rgba(0, 242, 254, 0.5);">
+    <div class="glass-panel login-card" style="width: 100%; max-width: 400px; padding: 30px; text-align: center; border-color: rgba(220, 20, 30, 0.15); box-shadow: 0 15px 35px rgba(0,0,0,0.06);">
+      <div style="font-size: 3rem; color: #ff3344; margin-bottom: 15px; text-shadow: 0 0 20px rgba(255, 51, 68, 0.3);">
         <i class="fa-solid fa-shield-halved"></i>
       </div>
-      <h2 style="font-size: 1.5rem; margin-bottom: 8px; color: #fff;">ផ្ទៀងផ្ទាត់សិទ្ធិចូលប្រើប្រាស់</h2>
+      <h2 style="font-size: 1.5rem; margin-bottom: 8px; color: #0f172a;">ផ្ទៀងផ្ទាត់សិទ្ធិចូលប្រើប្រាស់</h2>
       <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 25px;">សូមវាយបញ្ចូលលេខកូដសម្ងាត់ (Security Key) ដើម្បីបើកផ្ទាំងគ្រប់គ្រង</p>
       
       <form id="login-form">
         <div class="form-group" style="text-align: left; margin-bottom: 20px;">
-          <label for="security-key-input" style="font-size: 0.85rem; margin-bottom: 8px;">លេខកូដសម្ងាត់ (Key) *</label>
+          <label for="security-key-input" style="font-size: 0.85rem; margin-bottom: 8px; color: var(--text-muted);">លេខកូដសម្ងាត់ (Key) *</label>
           <div style="position: relative;">
-            <input type="password" id="security-key-input" placeholder="វាយបញ្ចូលលេខកូដសម្ងាត់..." required style="padding-left: 40px; margin-bottom: 0; width: 100%; height: 42px; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff;">
+            <input type="password" id="security-key-input" placeholder="វាយបញ្ចូលលេខកូដសម្ងាត់..." required style="padding-left: 40px; margin-bottom: 0; width: 100%; height: 42px; background: #ffffff; border: 1px solid rgba(0,0,0,0.15); color: #1e293b;">
             <i class="fa-solid fa-key" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
           </div>
         </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1rem; height: 45px; background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); box-shadow: 0 5px 15px rgba(0, 242, 254, 0.35);">
+        <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1rem; height: 45px; background: linear-gradient(135deg, #ff3344 0%, #b3001e 100%); box-shadow: 0 5px 15px rgba(255, 51, 68, 0.25);">
           <i class="fa-solid fa-right-to-bracket"></i> ចូលប្រព័ន្ធ
         </button>
       </form>
+      <div style="margin-top: 15px; text-align: center;">
+        <a href="#" id="btn-forget-key" style="font-size: 0.8rem; color: #ff3344; text-decoration: none; font-weight: 600;"><i class="fa-solid fa-circle-question"></i> ភ្លេចលេខកូដសម្ងាត់? (Forgot Key?)</a>
+        <div id="recovery-message-container" class="hidden" style="margin-top: 12px; font-size: 0.8rem; color: #ffb703; background: rgba(255, 183, 3, 0.08); border: 1px solid rgba(255, 183, 3, 0.15); padding: 10px 12px; border-radius: 6px; line-height: 1.4; text-align: left; word-break: break-all;"></div>
+      </div>
     </div>
   </div>
 
@@ -402,6 +404,20 @@
               </div>
               <button type="submit" class="btn btn-primary" style="height: 42px; background: linear-gradient(135deg, #ffb703 0%, #fb8500 100%);">
                 <i class="fa-solid fa-plus"></i> បន្ថែម Key
+              </button>
+            </form>
+          </div>
+
+          <!-- Recovery Setting Form -->
+          <div class="glass-panel" style="padding: 20px; margin-bottom: 25px; border-color: rgba(0, 242, 254, 0.15);">
+            <h3 style="font-size: 1rem; margin-bottom: 15px;"><i class="fa-solid fa-circle-info" style="color: #00f2fe;"></i> កំណត់ព័ត៌មានទំនាក់ទំនងពេលភ្លេចលេខកូដ (Recovery Helper Settings)</h3>
+            <form id="recovery-settings-form" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+              <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 300px;">
+                <label for="recovery-contact-input" style="font-size: 0.85rem;">លេខទូរស័ព្ទ អត្ថបទជំនួយ ឬតេឡេក្រាមសម្រាប់ទាក់ទង *</label>
+                <input type="text" id="recovery-contact-input" required placeholder="ឧ. សូមទាក់ទងមកកាន់ Telegram: @admin ឬ លេខទូរស័ព្ទ: 096 000 0000" style="margin-bottom: 0; height: 42px; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff;">
+              </div>
+              <button type="submit" class="btn btn-primary" style="height: 42px; background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);">
+                <i class="fa-solid fa-floppy-disk"></i> រក្សាទុក
               </button>
             </form>
           </div>
