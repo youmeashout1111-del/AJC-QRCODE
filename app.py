@@ -179,7 +179,8 @@ def init_db():
             show_tiktok      INTEGER DEFAULT 1,
             show_youtube     INTEGER DEFAULT 1,
             capture_location INTEGER DEFAULT 0,
-            created_at       TEXT
+            created_at       TEXT,
+            expires_at       TEXT
         );
         """,
         """
@@ -227,10 +228,11 @@ def init_db():
     finally:
         conn.close()
 
-    # Legacy Schema Auto-Migrations: ensure created_at column exists in keys, qrcodes, and frames tables
+    # Legacy Schema Auto-Migrations: ensure created_at / expires_at column exists in keys, qrcodes, and frames tables
     for tbl, col_name, col_t in [
         ('keys', 'created_at', 'TEXT'),
         ('qrcodes', 'created_at', 'TEXT'),
+        ('qrcodes', 'expires_at', 'TEXT'),
         ('frames', 'created_at', 'TEXT')
     ]:
         try:
@@ -399,13 +401,13 @@ def get_public_qrcode(qr_id):
     q_sel = """
         SELECT id, name, hashtag, facebook_url, tiktok_url, youtube_url,
                frame_image, frame_image_data, default_location,
-               show_facebook, show_tiktok, show_youtube, capture_location
+               show_facebook, show_tiktok, show_youtube, capture_location, expires_at
         FROM qrcodes
         WHERE id = %s
     """ if is_pg else """
         SELECT id, name, hashtag, facebook_url, tiktok_url, youtube_url,
                frame_image, frame_image_data, default_location,
-               show_facebook, show_tiktok, show_youtube, capture_location
+               show_facebook, show_tiktok, show_youtube, capture_location, expires_at
         FROM qrcodes
         WHERE id = ?
     """
@@ -439,6 +441,13 @@ def create_qrcode():
     show_youtube     = 1 if request.form.get('show_youtube')     == 'true' else 0
     capture_location = 1 if request.form.get('capture_location') == 'true' else 0
 
+    expires_at       = request.form.get('expires_at', '').strip()
+
+    if not expires_at:
+        # Default to 1 year from now (YYYY-MM-DD)
+        from datetime import date
+        expires_at = (date.today().replace(year=date.today().year + 1)).isoformat()
+
     if not qr_id or not name:
         return jsonify({'error': 'មេត្តាបញ្ចូល Sales Team និង Depot!'}), 400
 
@@ -469,20 +478,20 @@ def create_qrcode():
         INSERT INTO qrcodes
             (id, name, hashtag, facebook_url, tiktok_url, youtube_url,
              frame_image, frame_image_data, default_location,
-             show_facebook, show_tiktok, show_youtube, capture_location, created_at)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+             show_facebook, show_tiktok, show_youtube, capture_location, created_at, expires_at)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
     """ if is_pg else """
         INSERT INTO qrcodes
             (id, name, hashtag, facebook_url, tiktok_url, youtube_url,
              frame_image, frame_image_data, default_location,
-             show_facebook, show_tiktok, show_youtube, capture_location, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             show_facebook, show_tiktok, show_youtube, capture_location, created_at, expires_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """
     
     execute_query(q_ins, (
         qr_id, name, hashtag, facebook_url, tiktok_url, youtube_url,
         frame_image, frame_image_data, default_location,
-        show_facebook, show_tiktok, show_youtube, capture_location, now
+        show_facebook, show_tiktok, show_youtube, capture_location, now, expires_at
     ), commit=True)
 
     return jsonify({
@@ -492,7 +501,7 @@ def create_qrcode():
         'default_location': default_location,
         'show_facebook': bool(show_facebook), 'show_tiktok': bool(show_tiktok),
         'show_youtube': bool(show_youtube), 'capture_location': bool(capture_location),
-        'created_at': now, 'scan_count': 0
+        'created_at': now, 'expires_at': expires_at, 'scan_count': 0
     }), 201
 
 @app.route('/api/qrcodes/<string:qr_id>', methods=['DELETE'])
@@ -524,6 +533,23 @@ def delete_qrcode(qr_id):
         conn.close()
 
     return jsonify({'message': 'បានលុប QR Code ដោយជោគជ័យ!'})
+
+@app.route('/api/qrcodes/<string:qr_id>', methods=['PUT'])
+def update_qrcode(qr_id):
+    auth_key = request.headers.get('Authorization')
+    role = get_role_by_key(auth_key)
+    if role not in ['admin', 'moderator']:
+        return jsonify({'error': 'គ្មានសិទ្ធិកែប្រែ QR Code ឡើយ!'}), 403
+
+    data = request.json or {}
+    expires_at = data.get('expires_at', '').strip()
+    if not expires_at:
+        return jsonify({'error': 'មេត្តាបញ្ចូលថ្ងៃខែឆ្នាំហួសកំណត់!'}), 400
+
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_upd = "UPDATE qrcodes SET expires_at = %s WHERE id = %s" if is_pg else "UPDATE qrcodes SET expires_at = ? WHERE id = ?"
+    execute_query(q_upd, (expires_at, qr_id), commit=True)
+    return jsonify({'message': 'បានកែប្រែដោយជោគជ័យ!'})
 
 # Serve frame image from DB Base64
 @app.route('/api/frame-image/<qr_id>')
@@ -952,13 +978,21 @@ def record_scan():
         return jsonify({'error': 'មេត្តាបំពេញព័ត៌មានអោយបានគ្រប់គ្រាន់!'}), 400
 
     is_pg = bool(DATABASE_URL and HAS_PG)
-    q_chk = "SELECT name FROM qrcodes WHERE id = %s" if is_pg else "SELECT name FROM qrcodes WHERE id = ?"
+    q_chk = "SELECT name, expires_at FROM qrcodes WHERE id = %s" if is_pg else "SELECT name, expires_at FROM qrcodes WHERE id = ?"
     qr_row = execute_query(q_chk, (qr_id,), fetch_one=True)
 
-    if not qr_row and qr_id != 'test_qr':
-        return jsonify({'error': 'QR Code មិនត្រឹមត្រូវ ឬត្រូវបានលុបចោល!'}), 404
+    if qr_row:
+        qr_name = qr_row['name']
+        expires_at = qr_row['expires_at']
+        if expires_at:
+            ict_date = get_ict_now().split('T')[0]
+            if ict_date > expires_at:
+                return jsonify({'error': 'ហួសការកំណត់ហើយ សូមអរគុណ!'}), 400
+    else:
+        if qr_id != 'test_qr':
+            return jsonify({'error': 'QR Code មិនត្រឹមត្រូវ ឬត្រូវបានលុបចោល!'}), 404
+        qr_name = 'មិនស្គាល់'
 
-    qr_name = qr_row['name'] if qr_row else 'មិនស្គាល់'
     scan_id = uuid.uuid4().hex[:12]
     now     = get_ict_now()
 
