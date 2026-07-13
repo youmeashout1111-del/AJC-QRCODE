@@ -73,7 +73,7 @@ h1, h2, h3, h4, h5, h6 {
 .admin-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 40px 20px;
+  padding: 20px 20px;
   width: 100%;
 }
 
@@ -82,32 +82,32 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 40px;
+  gap: 8px;
+  margin-bottom: 8px;
   border-bottom: 1px solid var(--border-glass);
-  padding-bottom: 20px;
+  padding-bottom: 6px;
 }
 
 .admin-logo {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 8px;
   min-width: 0;
 }
 
 .admin-logo h1 {
-  font-size: 2.2rem;
+  font-size: 1.25rem;
   background: var(--primary-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  letter-spacing: 1px;
+  letter-spacing: 0.3px;
   white-space: nowrap;
 }
 
 .admin-logo i {
-  font-size: 2.5rem;
+  font-size: 1.35rem;
   color: #ff1a2b;
-  text-shadow: 0 0 15px rgba(255, 0, 127, 0.4);
+  text-shadow: 0 0 8px rgba(255, 0, 127, 0.4);
   flex-shrink: 0;
 }
 
@@ -115,16 +115,16 @@ h1, h2, h3, h4, h5, h6 {
 .admin-header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 /* Stats Cards Grid */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
-  margin-bottom: 45px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .stat-card {
@@ -133,7 +133,8 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: space-between;
   position: relative;
   overflow: hidden;
-  border-radius: 18px;
+  border-radius: 8px;
+  padding: 6px 12px;
 }
 
 .stat-card::after {
@@ -142,25 +143,25 @@ h1, h2, h3, h4, h5, h6 {
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 4px;
+  height: 2px;
   background: var(--primary-gradient);
 }
 
 .stat-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-1px);
   border-color: rgba(255, 0, 127, 0.2);
 }
 
 .stat-info h3 {
-  font-size: 0.9rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin-bottom: 5px;
+  letter-spacing: 0.5px;
+  margin-bottom: 1px;
 }
 
 .stat-number {
-  font-size: 2.5rem;
+  font-size: 1.35rem;
   font-family: var(--font-title);
   font-weight: 900;
   background: linear-gradient(180deg, #fff 0%, var(--text-muted) 100%);
@@ -169,7 +170,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .stat-icon {
-  font-size: 2.8rem;
+  font-size: 1.35rem;
   opacity: 0.7;
   background: var(--primary-gradient);
   -webkit-background-clip: text;
@@ -535,6 +536,9 @@ table.logs-table {
 table.logs-table th, table.logs-table td {
   padding: 10px 8px;
   border-bottom: 1px solid var(--border-glass);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 
 table.logs-table th {
