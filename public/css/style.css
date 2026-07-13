@@ -530,11 +530,12 @@ table.logs-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
+  table-layout: fixed;
 }
 
 table.logs-table th, table.logs-table td {
-  padding: 10px 8px;
+  padding: 8px 4px;
   border-bottom: 1px solid var(--border-glass);
   white-space: nowrap;
   text-overflow: ellipsis;
