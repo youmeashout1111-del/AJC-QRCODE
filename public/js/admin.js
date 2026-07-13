@@ -831,8 +831,8 @@ async function deleteQRCode(id) {
   }
 }
 
-// Helper to draw QR Code with Text Header (Team & Location) on canvas
-function drawQRWithText(qrId, qrName, defaultLocation, scanUrl, callback) {
+// Helper to draw QR Code with Text Header (Team, Location & Expiration) on canvas
+function drawQRWithText(qrId, qrName, defaultLocation, expiresAt, scanUrl, callback) {
   // Generate QR in a temporary canvas
   const qrCanvas = document.createElement('canvas');
   QRCode.toCanvas(qrCanvas, scanUrl, {
@@ -845,15 +845,15 @@ function drawQRWithText(qrId, qrName, defaultLocation, scanUrl, callback) {
       return;
     }
     
-    // Create final canvas with extra height at the top for headers
+    // Create final canvas with extra height at the top for headers (800 total height)
     const finalCanvas = document.createElement('canvas');
     finalCanvas.width = 600;
-    finalCanvas.height = 750;
+    finalCanvas.height = 800;
     const ctx = finalCanvas.getContext('2d');
     
     // Fill background with white
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 600, 750);
+    ctx.fillRect(0, 0, 600, 800);
     
     // Format top line
     const cleanName = qrName.replace(/^Team[-:]\s*/i, '');
@@ -868,17 +868,32 @@ function drawQRWithText(qrId, qrName, defaultLocation, scanUrl, callback) {
     ctx.font = "bold 32px 'Kantumruy Pro', Arial, sans-serif";
     ctx.fillStyle = '#000000';
     ctx.textAlign = 'center';
-    ctx.fillText(line1, 300, 55);
+    ctx.fillText(line1, 300, 50);
     
     // Format bottom line
     const line2 = `ផ្សារ៖ ${defaultLocation || ''}`;
     
     // Draw bottom line
     ctx.font = "bold 26px 'Kantumruy Pro', Arial, sans-serif";
-    ctx.fillText(line2, 300, 105);
+    ctx.fillText(line2, 300, 100);
+
+    // Format expiration line
+    let expFormatted = '';
+    if (expiresAt) {
+      const parts = expiresAt.split('-');
+      if (parts.length === 3) {
+        expFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      } else {
+        expFormatted = expiresAt;
+      }
+    }
+    const line3 = `ផុតកំណត់៖ ${expFormatted || 'គ្មានកំណត់'}`;
+
+    // Draw expiration line
+    ctx.fillText(line3, 300, 150);
     
-    // Draw the QR Code canvas (600x600) onto the final canvas
-    ctx.drawImage(qrCanvas, 0, 150, 600, 600);
+    // Draw the QR Code canvas (600x600) onto the final canvas (starts at Y=200)
+    ctx.drawImage(qrCanvas, 0, 200, 600, 600);
     
     callback(finalCanvas);
   });
@@ -889,9 +904,10 @@ function downloadSingleQR(qrId, qrName, format) {
   const scanUrl = getScanUrl(qrId);
   const qr = qrCodes.find(q => q.id === qrId) || {};
   const defaultLocation = qr.default_location || '';
+  const expiresAt = qr.expires_at || '';
   
   if (format === 'png') {
-    drawQRWithText(qrId, qrName, defaultLocation, scanUrl, function(finalCanvas) {
+    drawQRWithText(qrId, qrName, defaultLocation, expiresAt, scanUrl, function(finalCanvas) {
       if (!finalCanvas) {
         showToast('មានបញ្ហាក្នុងការទាញយក!', 'error');
         return;
@@ -922,13 +938,25 @@ function downloadSingleQR(qrId, qrName, format) {
       }
       const line2 = `ផ្សារ៖ ${defaultLocation || ''}`;
       
+      let expFormatted = '';
+      if (expiresAt) {
+        const parts = expiresAt.split('-');
+        if (parts.length === 3) {
+          expFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        } else {
+          expFormatted = expiresAt;
+        }
+      }
+      const line3 = `ផុតកំណត់៖ ${expFormatted || 'គ្មានកំណត់'}`;
+      
       const qrSvgContent = svgString.replace(/<svg[^>]*>/i, '').replace(/<\/svg>/i, '');
       const finalSvg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750">
-          <rect width="600" height="750" fill="#ffffff"/>
-          <text x="300" y="55" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="32" fill="#000000" text-anchor="middle">${line1}</text>
-          <text x="300" y="105" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="26" fill="#000000" text-anchor="middle">${line2}</text>
-          <g transform="translate(0, 150)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
+          <rect width="600" height="800" fill="#ffffff"/>
+          <text x="300" y="50" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="32" fill="#000000" text-anchor="middle">${line1}</text>
+          <text x="300" y="100" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="26" fill="#000000" text-anchor="middle">${line2}</text>
+          <text x="300" y="150" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="26" fill="#000000" text-anchor="middle">${line3}</text>
+          <g transform="translate(0, 200)">
             ${qrSvgContent}
           </g>
         </svg>
@@ -959,10 +987,11 @@ async function handleBatchDownload() {
     const qr = qrCodes.find(q => q.id === qrId) || {};
     const qrName = qr.name || cb.dataset.name;
     const defaultLocation = qr.default_location || '';
+    const expiresAt = qr.expires_at || '';
     const scanUrl = getScanUrl(qrId);
     
     const promise = new Promise((resolve) => {
-      drawQRWithText(qrId, qrName, defaultLocation, scanUrl, function(finalCanvas) {
+      drawQRWithText(qrId, qrName, defaultLocation, expiresAt, scanUrl, function(finalCanvas) {
         if (!finalCanvas) {
           resolve();
           return;
