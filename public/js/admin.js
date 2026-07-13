@@ -310,64 +310,23 @@ function setupEventListeners() {
   // Forgot Key click
   const forgetKeyBtn = document.getElementById('btn-forget-key');
   if (forgetKeyBtn) {
-    forgetKeyBtn.addEventListener('click', async (e) => {
+    forgetKeyBtn.addEventListener('click', (e) => {
       e.preventDefault();
       const msgContainer = document.getElementById('recovery-message-container');
       if (!msgContainer) return;
       
       if (msgContainer.classList.contains('hidden')) {
-        try {
-          forgetKeyBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> កំពុងទាញយក...`;
-          const res = await fetch('/api/settings/recovery');
-          const data = await res.json();
-          msgContainer.textContent = data.value || 'សូមទាក់ទង Admin';
-          msgContainer.classList.remove('hidden');
-        } catch (err) {
-          console.error(err);
-          showToast('មិនអាចទាញយកព័ត៌មានជំនួយបានទេ!', 'error');
-        } finally {
-          forgetKeyBtn.innerHTML = `<i class="fa-solid fa-circle-question"></i> ភ្លេចលេខកូដសម្ងាត់? (Forgot Key?)`;
-        }
+        msgContainer.innerHTML = `
+          <div style="font-weight: 700; color: #ff3344; margin-bottom: 4px; font-size: 0.85rem;">
+            ករណីភ្លេចលេខកូដ (In case forget Key password)
+          </div>
+          <div style="color: #1e293b; font-size: 0.82rem; font-weight: 500; line-height: 1.4;">
+            សូមទាក់ទង Admin តាមរយៈ Telegram: @admin ឬ លេខទូរស័ព្ទ: 096 000 0000
+          </div>
+        `;
+        msgContainer.classList.remove('hidden');
       } else {
         msgContainer.classList.add('hidden');
-      }
-    });
-  }
-
-  // Recovery Contact Settings form submit
-  const recoveryForm = document.getElementById('recovery-settings-form');
-  if (recoveryForm) {
-    recoveryForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const inputVal = document.getElementById('recovery-contact-input').value.trim();
-      const submitBtn = recoveryForm.querySelector('button[type="submit"]');
-      const origHtml = submitBtn.innerHTML;
-      
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> កំពុងរក្សាទុក...`;
-      
-      try {
-        const res = await fetch('/api/settings/recovery', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': getAuthKey(),
-            'X-Device-ID': getDeviceID()
-          },
-          body: JSON.stringify({ value: inputVal })
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          showToast(data.error || 'រក្សាទុកបរាជ័យ!', 'error');
-          return;
-        }
-        showToast('បានរក្សាទុកព័ត៌មានទំនាក់ទំនងជោគជ័យ!', 'success');
-      } catch (err) {
-        console.error(err);
-        showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = origHtml;
       }
     });
   }
@@ -1419,6 +1378,14 @@ async function handleLogin(e) {
   }
 }
 
+function getDisplayKey(key) {
+    if (key.includes('***')) return key;
+    if (key.includes('-')) {
+      return key.split('-')[0] + '-***';
+    }
+    return key.length > 5 ? key.substring(0, 5) + '...' : key;
+  }
+
 async function loadKeysData() {
   if (currentUserRole !== 'admin' && currentUserRole !== 'moderator') return;
   
@@ -1452,12 +1419,13 @@ async function loadKeysData() {
           
           const deviceCount = item.devices ? item.devices.length : 0;
           const noteHtml = item.note
-            ? `<span class="note-editable" data-note="${escapeHTML(item.note)}" onclick="updateKeyNote('${escapeHTML(item.key)}', 'admin', this)" style="color: #3b82f6; cursor: pointer; border-bottom: 1px dashed rgba(59,130,246,0.4); padding-bottom: 1px;" title="ចុចដើម្បីកែប្រែ">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>`
-            : `<span class="note-editable" data-note="" onclick="updateKeyNote('${escapeHTML(item.key)}', 'admin', this)" style="color: var(--text-muted); opacity: 0.6; cursor: pointer; font-style: italic;" title="ចុចដើម្បីបន្ថែមឈ្មោះ">+ បន្ថែមឈ្មោះ</span>`;
+            ? `<span class="note-editable" data-note="${escapeHTML(item.note)}" onclick="updateKeyNote('${escapeHTML(item.key)}', 'admin', this)" style="color: #3b82f6; cursor: pointer; border-bottom: 1px dashed rgba(59,130,246,0.4); padding-bottom: 1px;" title="ចុចដើម្បីកែប្រែ">• ${escapeHTML(item.note)}</span>`
+            : `<span class="note-editable" data-note="" onclick="updateKeyNote('${escapeHTML(item.key)}', 'admin', this)" style="color: var(--text-muted); opacity: 0.6; cursor: pointer; font-style: italic;" title="ចុចដើម្បីបន្ថែមឈ្មោះ">+ ឈ្មោះ</span>`;
           
+          const displayKeyVal = getDisplayKey(item.key);
           const keyHtml = currentUserRole === 'admin'
-            ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'admin', this)" style="font-family: monospace; font-size: 0.95rem; color: #1e293b; cursor: pointer; border-bottom: 1px dashed rgba(0,0,0,0.25); padding-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; display: inline-block;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
-            : `<span style="font-family: monospace; font-size: 0.95rem; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; display: inline-block;">${escapeHTML(item.key)}</span>`;
+            ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'admin', this)" style="font-family: monospace; font-size: 0.85rem; color: #1e293b; cursor: pointer; border-bottom: 1px dashed rgba(0,0,0,0.25); padding-bottom: 1px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; display: inline-block;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(displayKeyVal)}</span>`
+            : `<span style="font-family: monospace; font-size: 0.85rem; color: #1e293b; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; display: inline-block;">${escapeHTML(displayKeyVal)}</span>`;
 
           // Date formatting helper
           let dateStr = '';
@@ -1542,16 +1510,17 @@ async function loadKeysData() {
           // Only admin can edit moderator key notes
           const noteHtml = currentUserRole === 'admin'
             ? (item.note
-                ? `<span class="note-editable" data-note="${escapeHTML(item.note)}" onclick="updateKeyNote('${escapeHTML(item.key)}', 'moderator', this)" style="color: #3b82f6; cursor: pointer; border-bottom: 1px dashed rgba(59,130,246,0.4); padding-bottom: 1px;" title="ចុចដើម្បីកែប្រែ">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>`
-                : `<span class="note-editable" data-note="" onclick="updateKeyNote('${escapeHTML(item.key)}', 'moderator', this)" style="color: var(--text-muted); opacity: 0.6; cursor: pointer; font-style: italic;" title="ចុចដើម្បីបន្ថែមឈ្មោះ">+ បន្ថែមឈ្មោះ</span>`)
-            : (item.note ? `<span style="color: #3b82f6;">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>` : '');
+                ? `<span class="note-editable" data-note="${escapeHTML(item.note)}" onclick="updateKeyNote('${escapeHTML(item.key)}', 'moderator', this)" style="color: #3b82f6; cursor: pointer; border-bottom: 1px dashed rgba(59,130,246,0.4); padding-bottom: 1px;" title="ចុចដើម្បីកែប្រែ">• ${escapeHTML(item.note)}</span>`
+                : `<span class="note-editable" data-note="" onclick="updateKeyNote('${escapeHTML(item.key)}', 'moderator', this)" style="color: var(--text-muted); opacity: 0.6; cursor: pointer; font-style: italic;" title="ចុចដើម្បីបន្ថែមឈ្មោះ">+ ឈ្មោះ</span>`)
+            : (item.note ? `<span style="color: #3b82f6;">• ${escapeHTML(item.note)}</span>` : '');
           
           // Moderators can see their keys but only admin can delete moderator keys
           const canDeleteMod = currentUserRole === 'admin';
           
+          const displayKeyVal = getDisplayKey(item.key);
           const keyHtml = currentUserRole === 'admin'
-            ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'moderator', this)" style="font-family: monospace; font-size: 0.95rem; color: #1e293b; cursor: pointer; border-bottom: 1px dashed rgba(0,0,0,0.25); padding-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; display: inline-block;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
-            : `<span style="font-family: monospace; font-size: 0.95rem; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; display: inline-block;">${escapeHTML(item.key)}</span>`;
+            ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'moderator', this)" style="font-family: monospace; font-size: 0.85rem; color: #1e293b; cursor: pointer; border-bottom: 1px dashed rgba(0,0,0,0.25); padding-bottom: 1px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; display: inline-block;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(displayKeyVal)}</span>`
+            : `<span style="font-family: monospace; font-size: 0.85rem; color: #1e293b; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; display: inline-block;">${escapeHTML(displayKeyVal)}</span>`;
 
           // Date formatting helper
           let dateStr = '';
@@ -1576,9 +1545,14 @@ async function loadKeysData() {
           ` : '';
 
           li.innerHTML = `
-            <!-- Row 1: Key (Left) and Actions (Right) -->
+            <!-- Row 1: Key + Note (Left) and Actions (Right) -->
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; min-width: 0;">
-              ${keyHtml}
+              <div style="display: flex; align-items: center; gap: 4px; min-width: 0; flex: 1;">
+                ${keyHtml}
+                <span style="font-size: 0.7rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 75px;" title="${escapeHTML(item.note || '')}">
+                  ${noteHtml}
+                </span>
+              </div>
               <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
                 <button class="btn btn-secondary btn-sm" onclick="copyTextToClipboard('${escapeHTML(item.key)}')" style="padding: 0; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; border-color: rgba(0,0,0,0.12); background: #fff;" title="Copy Key">
                   <i class="fa-solid fa-copy"></i>
@@ -1633,9 +1607,9 @@ async function loadKeysData() {
         const noteHtml = isMasked ? ''
           : canEditNote
             ? (item.note
-                ? `<span class="note-editable" data-note="${escapeHTML(item.note)}" onclick="updateKeyNote('${escapeHTML(item.key)}', 'user', this)" style="color: #3b82f6; cursor: pointer; border-bottom: 1px dashed rgba(59,130,246,0.4); padding-bottom: 1px;" title="ចុចដើម្បីកែប្រែ">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>`
-                : `<span class="note-editable" data-note="" onclick="updateKeyNote('${escapeHTML(item.key)}', 'user', this)" style="color: var(--text-muted); opacity: 0.6; cursor: pointer; font-style: italic;">+ បន្ថែមឈ្មោះ</span>`)
-            : (item.note ? `<span style="color: #3b82f6;">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>` : '');
+                ? `<span class="note-editable" data-note="${escapeHTML(item.note)}" onclick="updateKeyNote('${escapeHTML(item.key)}', 'user', this)" style="color: #3b82f6; cursor: pointer; border-bottom: 1px dashed rgba(59,130,246,0.4); padding-bottom: 1px;" title="ចុចដើម្បីកែប្រែ">• ${escapeHTML(item.note)}</span>`
+                : `<span class="note-editable" data-note="" onclick="updateKeyNote('${escapeHTML(item.key)}', 'user', this)" style="color: var(--text-muted); opacity: 0.6; cursor: pointer; font-style: italic;">+ ឈ្មោះ</span>`)
+            : (item.note ? `<span style="color: #3b82f6;">• ${escapeHTML(item.note)}</span>` : '');
         
         // Admin or Moderator can reset user keys
         const canReset = currentUserRole === 'admin' || currentUserRole === 'moderator';
@@ -1646,9 +1620,10 @@ async function loadKeysData() {
           </button>
         ` : '';
         
+        const displayKeyVal = getDisplayKey(item.key);
         const keyHtml = (!isMasked && (currentUserRole === 'admin' || currentUserRole === 'moderator'))
-          ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'user', this)" style="font-family: monospace; font-size: 0.95rem; color: #1e293b; cursor: pointer; border-bottom: 1px dashed rgba(0,0,0,0.25); padding-bottom: 1px;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
-          : `<span style="font-family: monospace; font-size: 0.95rem; color: #1e293b;">${escapeHTML(item.key)}</span>`;
+          ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'user', this)" style="font-family: monospace; font-size: 0.85rem; color: #1e293b; cursor: pointer; border-bottom: 1px dashed rgba(0,0,0,0.25); padding-bottom: 1px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; display: inline-block;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(displayKeyVal)}</span>`
+          : `<span style="font-family: monospace; font-size: 0.85rem; color: #1e293b; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; display: inline-block;">${escapeHTML(displayKeyVal)}</span>`;
 
         // Date formatting helper
         let dateStr = '';
@@ -1678,9 +1653,9 @@ async function loadKeysData() {
           li.innerHTML = `
             <!-- Row 1: Key + Note (Left) and Actions (Right) -->
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; min-width: 0;">
-              <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 4px; min-width: 0; flex: 1;">
                 ${keyHtml}
-                <span style="font-size: 0.72rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px;">
+                <span style="font-size: 0.7rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 75px;" title="${escapeHTML(item.note || '')}">
                   ${noteHtml}
                 </span>
               </div>
@@ -1698,9 +1673,9 @@ async function loadKeysData() {
             </div>
             <!-- Row 2: Limit configuration (Left) and Date (Right) -->
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 6px; border-top: 1px dashed rgba(0,0,0,0.04); padding-top: 5px;">
-              <div style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #64748b;">
+              <div style="display: flex; align-items: center; gap: 4px; font-size: 0.7rem; color: #64748b;">
                 <span>ឧបករណ៍៖ ${deviceCount} / </span>
-                <input type="number" class="key-limit-input" value="${item.max_devices}" min="1" style="width: 35px; height: 18px; background: #eef4ff; border: 1px solid rgba(0,0,0,0.12); color: #1e293b; text-align: center; border-radius: 4px; padding: 0; font-size: 0.72rem; margin: 0;">
+                <input type="number" class="key-limit-input" value="${item.max_devices}" min="1" style="width: 32px; height: 18px; background: #eef4ff; border: 1px solid rgba(0,0,0,0.12); color: #1e293b; text-align: center; border-radius: 4px; padding: 0; font-size: 0.7rem; margin: 0;">
                 <button class="btn btn-secondary btn-sm" onclick="updateKeyLimit('${escapeHTML(item.key)}', 'user', this)" style="padding: 0; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; border-color: rgba(59,130,246,0.3); color: #3b82f6;" title="Update Limit">
                   <i class="fa-solid fa-check"></i>
                 </button>
@@ -1727,7 +1702,7 @@ async function handleAddKey(e) {
   
   const keyVal = valueInput.value.trim();
   const roleVal = roleSelect.value;
-  const maxDevVal = parseInt(maxDevInput.value) || 5;
+  const maxDevVal = parseInt(maxDevInput.value) || 1;
   const noteVal = noteInput.value.trim();
   
   if (!noteVal) {
@@ -1758,7 +1733,7 @@ async function handleAddKey(e) {
     }
     
     valueInput.value = '';
-    maxDevInput.value = 5;
+    maxDevInput.value = 1;
     noteInput.value = '';
     loadKeysData();
   } catch (err) {
@@ -2165,12 +2140,125 @@ async function loadRecoverySetting() {
   try {
     const res = await fetch('/api/settings/recovery');
     const data = await res.json();
-    const inputEl = document.getElementById('recovery-contact-input');
-    if (inputEl) inputEl.value = data.value || '';
+    const textContainer = document.getElementById('recovery-text-container');
+    if (textContainer) {
+      textContainer.textContent = data.value || 'សូមទាក់ទង Admin តាមរយៈ Telegram: @admin ឬ លេខទូរស័ព្ទ: 096 000 0000';
+    }
   } catch (err) {
     console.error('Error loading recovery setting:', err);
   }
 }
+
+let isEditingRecovery = false;
+let originalRecoveryText = '';
+
+window.startEditRecovery = function() {
+  if (isEditingRecovery) return;
+  isEditingRecovery = true;
+  
+  const textContainer = document.getElementById('recovery-text-container');
+  const actionsContainer = document.getElementById('recovery-actions-container');
+  if (!textContainer || !actionsContainer) return;
+  
+  originalRecoveryText = textContainer.textContent.trim();
+  
+  textContainer.innerHTML = `
+    <input type="text" id="recovery-edit-input" value="${escapeHTML(originalRecoveryText)}" style="margin-bottom: 0; height: 32px; background: #ffffff; border: 1px solid rgba(0,0,0,0.15); color: #1e293b; font-size: 0.85rem; width: 100%; padding: 4px 8px; border-radius: 6px;">
+  `;
+  
+  actionsContainer.innerHTML = `
+    <button type="button" onclick="saveEditRecovery()" class="btn btn-secondary btn-sm" style="padding: 0; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; border-color: rgba(59,130,246,0.3); color: #3b82f6; background: #fff;" title="រក្សាទុក">
+      <i class="fa-solid fa-check"></i>
+    </button>
+    <button type="button" onclick="cancelEditRecovery()" class="btn btn-secondary btn-sm" style="padding: 0; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; border-color: rgba(0,0,0,0.12); color: #64748b; background: #fff;" title="បោះបង់">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  `;
+  
+  const input = document.getElementById('recovery-edit-input');
+  if (input) {
+    input.focus();
+    input.select();
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); saveEditRecovery(); }
+      if (e.key === 'Escape') { cancelEditRecovery(); }
+    });
+  }
+};
+
+window.cancelEditRecovery = function() {
+  if (!isEditingRecovery) return;
+  isEditingRecovery = false;
+  
+  const textContainer = document.getElementById('recovery-text-container');
+  const actionsContainer = document.getElementById('recovery-actions-container');
+  if (!textContainer || !actionsContainer) return;
+  
+  textContainer.textContent = originalRecoveryText;
+  
+  actionsContainer.innerHTML = `
+    <button type="button" id="btn-edit-recovery" onclick="startEditRecovery()" class="btn btn-secondary btn-sm" style="padding: 0; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; border-color: rgba(0,0,0,0.12); background: #fff;" title="កែប្រែព័ត៌មានទំនាក់ទំនង">
+      <i class="fa-solid fa-pen-to-square" style="color: #ffb703;"></i>
+    </button>
+  `;
+};
+
+window.saveEditRecovery = async function() {
+  if (!isEditingRecovery) return;
+  
+  const input = document.getElementById('recovery-edit-input');
+  if (!input) return;
+  
+  const newVal = input.value.trim();
+  if (!newVal) {
+    showToast('ព័ត៌មានទំនាក់ទំនងមិនអាចទទេបានទេ!', 'error');
+    return;
+  }
+  
+  const textContainer = document.getElementById('recovery-text-container');
+  const actionsContainer = document.getElementById('recovery-actions-container');
+  if (!textContainer || !actionsContainer) return;
+  
+  const tickBtn = actionsContainer.querySelector('button');
+  const originalHtml = tickBtn.innerHTML;
+  tickBtn.disabled = true;
+  tickBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  
+  try {
+    const res = await fetch('/api/settings/recovery', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': getAuthKey(),
+        'X-Device-ID': getDeviceID()
+      },
+      body: JSON.stringify({ value: newVal })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error || 'រក្សាទុកបរាជ័យ!', 'error');
+      tickBtn.disabled = false;
+      tickBtn.innerHTML = originalHtml;
+      return;
+    }
+    
+    showToast('បានកែប្រែព័ត៌មានទំនាក់ទំនងជោគជ័យ!', 'success');
+    originalRecoveryText = newVal;
+    isEditingRecovery = false;
+    textContainer.textContent = newVal;
+    
+    actionsContainer.innerHTML = `
+      <button type="button" id="btn-edit-recovery" onclick="startEditRecovery()" class="btn btn-secondary btn-sm" style="padding: 0; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; border-color: rgba(0,0,0,0.12); background: #fff;" title="កែប្រែព័ត៌មានទំនាក់ទំនង">
+        <i class="fa-solid fa-pen-to-square" style="color: #ffb703;"></i>
+      </button>
+    `;
+  } catch (err) {
+    console.error(err);
+    showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
+    tickBtn.disabled = false;
+    tickBtn.innerHTML = originalHtml;
+  }
+};
 
 async function updateKeyValue(keyVal, roleVal, spanEl) {
   if (!spanEl) return;

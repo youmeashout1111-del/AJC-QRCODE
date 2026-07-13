@@ -423,7 +423,7 @@
               </div>
               <div class="form-group" style="margin-bottom: 0; width: 100px;">
                 <label for="new-key-max-devices" style="font-size: 0.85rem;">ចំនួនឧបករណ៍ *</label>
-                <input type="number" id="new-key-max-devices" value="5" min="1" required style="margin-bottom: 0; height: 42px; background: #eef4ff; border: 1px solid rgba(0, 0, 0, 0.12); color: #1e293b; text-align: center;">
+                <input type="number" id="new-key-max-devices" value="1" min="1" required style="margin-bottom: 0; height: 42px; background: #eef4ff; border: 1px solid rgba(0, 0, 0, 0.12); color: #1e293b; text-align: center;">
               </div>
               <button type="submit" class="btn btn-primary" style="height: 42px; background: linear-gradient(135deg, #ffb703 0%, #fb8500 100%); border: none;">
                 <i class="fa-solid fa-plus"></i> បន្ថែម Key
@@ -432,17 +432,20 @@
           </div>
 
           <!-- Recovery Setting Form -->
-          <div class="glass-panel" style="padding: 20px; margin-bottom: 25px; border-color: rgba(220, 20, 30, 0.15);">
-            <h3 style="font-size: 1rem; margin-bottom: 15px;"><i class="fa-solid fa-circle-info" style="color: #ff3344;"></i> កំណត់ព័ត៌មានទំនាក់ទំនងពេលភ្លេចលេខកូដ (Recovery Helper Settings)</h3>
-            <form id="recovery-settings-form" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
-              <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 300px;">
-                <label for="recovery-contact-input" style="font-size: 0.85rem;">លេខទូរស័ព្ទ អត្ថបទជំនួយ ឬតេឡេក្រាមសម្រាប់ទាក់ទង *</label>
-                <input type="text" id="recovery-contact-input" required placeholder="ឧ. សូមទាក់ទងមកកាន់ Telegram: @admin ឬ លេខទូរស័ព្ទ: 096 000 0000" style="margin-bottom: 0; height: 42px; background: #ffffff; border: 1px solid rgba(0,0,0,0.15); color: #1e293b;">
+          <div class="glass-panel" style="padding: 15px 20px; margin-bottom: 25px; border-color: rgba(220, 20, 30, 0.15);">
+            <div style="font-size: 0.9rem; font-weight: 700; color: #ff3344; margin-bottom: 6px;">
+              ករណីភ្លេចលេខកូដ (In case forget Key password)
+            </div>
+            <div id="recovery-display-wrapper" style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 15px;">
+              <div id="recovery-text-container" style="font-size: 0.85rem; color: #1e293b; font-weight: 500; flex: 1; min-width: 0; word-break: break-all;">
+                សូមទាក់ទង Admin តាមរយៈ Telegram: @admin ឬ លេខទូរស័ព្ទ: 096 000 0000
               </div>
-              <button type="submit" class="btn btn-primary" style="height: 42px; background: linear-gradient(135deg, #ff3344 0%, #b3001e 100%);">
-                <i class="fa-solid fa-floppy-disk"></i> រក្សាទុក
-              </button>
-            </form>
+              <div id="recovery-actions-container" style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                <button type="button" id="btn-edit-recovery" onclick="startEditRecovery()" class="btn btn-secondary btn-sm" style="padding: 0; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; border-color: rgba(0,0,0,0.12); background: #fff;" title="កែប្រែព័ត៌មានទំនាក់ទំនង">
+                  <i class="fa-solid fa-pen-to-square" style="color: #ffb703;"></i>
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Keys List Container -->
