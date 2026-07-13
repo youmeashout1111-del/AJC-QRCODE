@@ -295,6 +295,9 @@ function setupEventListeners() {
   document.getElementById('btn-delete-selected-logs').addEventListener('click', deleteSelectedLogs);
   document.getElementById('btn-delete-filtered-logs').addEventListener('click', deleteFilteredLogs);
 
+  // Manual refresh button
+  document.getElementById('btn-refresh-logs').addEventListener('click', () => {
+    fetchData();
     showToast('បានផ្ទុកទិន្នន័យថ្មីៗឡើងវិញ!', 'success');
   });
 
