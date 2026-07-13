@@ -114,10 +114,31 @@
 
         <!-- Camera Section (Hidden initially) -->
         <div id="camera-section" class="hidden">
-          <div class="camera-container">
+          <div class="camera-container" style="position: relative;">
             <video id="video-stream" class="camera-stream" autoplay playsinline muted></video>
             <!-- Frame Overlay in real time -->
             <img id="camera-frame-mask" class="camera-frame-overlay" src="" alt="Frame Mask">
+            <!-- Flip Camera Button (Front / Back) -->
+            <button id="btn-flip-camera" onclick="flipCamera()" title="ប្តូរ Camera" style="
+              position: absolute;
+              top: 12px;
+              right: 12px;
+              z-index: 20;
+              background: rgba(0,0,0,0.45);
+              border: none;
+              border-radius: 50%;
+              width: 46px;
+              height: 46px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              cursor: pointer;
+              backdrop-filter: blur(6px);
+              -webkit-backdrop-filter: blur(6px);
+              transition: transform 0.3s ease;
+            ">
+              <i class="fa-solid fa-camera-rotate" style="color:#fff; font-size:1.25rem;"></i>
+            </button>
           </div>
           
           <div class="camera-controls">

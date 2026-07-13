@@ -274,21 +274,20 @@ async function handleStep1Submit(e) {
   }
 }
 
-// Step 2: Camera Stream Activation
-async function startCameraFlow() {
-  document.getElementById('photo-source-selector').classList.add('hidden');
-  document.getElementById('camera-section').classList.remove('hidden');
+// Track current facing mode (start with back camera)
+let currentFacingMode = 'environment';
 
-  // Detect iOS Safari
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+// Start camera with specified facing mode
+async function startCameraWithFacing(facingMode) {
+  // Stop existing stream first
+  if (videoStream) {
+    videoStream.getTracks().forEach(track => track.stop());
+    videoStream = null;
+  }
 
-  // iOS Safari needs specific constraints — try back camera first (most natural for photo)
   const constraintsList = [
-    // 1st attempt: back camera (environment) — best for taking photos on iPhone
-    { video: { facingMode: { ideal: 'environment' } }, audio: false },
-    // 2nd attempt: front camera — fallback
-    { video: { facingMode: { ideal: 'user' } }, audio: false },
-    // 3rd attempt: any camera, no constraints
+    { video: { facingMode: { ideal: facingMode } }, audio: false },
+    { video: { facingMode: facingMode }, audio: false },
     { video: true, audio: false }
   ];
 
@@ -298,37 +297,66 @@ async function startCameraFlow() {
   for (const constraints of constraintsList) {
     try {
       stream = await navigator.mediaDevices.getUserMedia(constraints);
-      break; // success — stop trying
+      break;
     } catch (e) {
       lastError = e;
-      console.warn('Camera constraint attempt failed:', constraints, e.name, e.message);
+      console.warn('Camera attempt failed:', e.name, e.message);
     }
   }
 
   if (!stream) {
-    console.error('All camera attempts failed:', lastError);
-    // Show specific error message for iOS Permission denied
     if (lastError && (lastError.name === 'NotAllowedError' || lastError.name === 'PermissionDeniedError')) {
       showToast('គ្មានសិទ្ធិចូលប្រើកាមេរ៉ា! សូមចូល Settings → Safari → Camera → Allow', 'error');
     } else if (lastError && lastError.name === 'NotFoundError') {
       showToast('រកមិនឃើញកាមេរ៉ានៅលើឧបករណ៍នេះ!', 'error');
     } else {
-      showToast('មិនអាចបើកកាមេរ៉ាបានទេ! សូមសាកល្បងប្រើប្រាស់ Safari ឬប្រើ "ជ្រើសរើសរូបភាព" ជំនួស!', 'error');
+      showToast('មិនអាចបើកកាមេរ៉ាបានទេ! សូមប្រើ "ជ្រើសរើសរូបភាព" ជំនួស!', 'error');
     }
-    stopCameraFlow();
-    return;
+    return false;
   }
 
   videoStream = stream;
   const video = document.getElementById('video-stream');
   video.srcObject = videoStream;
-
-  // iOS Safari requires explicit play() call after setting srcObject
   try {
     await video.play();
   } catch (playErr) {
-    // On iOS, play() can fail silently — this is OK as autoplay + playsinline handles it
     console.warn('video.play() warning (non-fatal on iOS):', playErr.message);
+  }
+  return true;
+}
+
+// Step 2: Camera Stream Activation
+async function startCameraFlow() {
+  document.getElementById('photo-source-selector').classList.add('hidden');
+  document.getElementById('camera-section').classList.remove('hidden');
+
+  // Always start with back camera (environment)
+  currentFacingMode = 'environment';
+  const ok = await startCameraWithFacing(currentFacingMode);
+  if (!ok) {
+    stopCameraFlow();
+  }
+}
+
+// Flip between Front and Back camera
+async function flipCamera() {
+  const btn = document.getElementById('btn-flip-camera');
+  if (btn) {
+    btn.style.transform = 'rotate(180deg)';
+    btn.disabled = true;
+  }
+
+  // Toggle facing mode
+  currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+
+  await startCameraWithFacing(currentFacingMode);
+
+  if (btn) {
+    setTimeout(() => {
+      btn.style.transform = 'rotate(0deg)';
+      btn.disabled = false;
+    }, 300);
   }
 }
 
