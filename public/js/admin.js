@@ -887,7 +887,7 @@ function drawQRWithText(qrId, qrName, defaultLocation, expiresAt, scanUrl, callb
         expFormatted = expiresAt;
       }
     }
-    const line3 = `ផុតកំណត់៖ ${expFormatted || 'គ្មានកំណត់'}`;
+    const line3 = `ផុតកំណត់៖ ${expFormatted || 'មិនមានកំណត់'}`;
 
     // Draw expiration line
     ctx.fillText(line3, 300, 150);
@@ -947,7 +947,7 @@ function downloadSingleQR(qrId, qrName, format) {
           expFormatted = expiresAt;
         }
       }
-      const line3 = `ផុតកំណត់៖ ${expFormatted || 'គ្មានកំណត់'}`;
+      const line3 = `ផុតកំណត់៖ ${expFormatted || 'មិនមានកំណត់'}`;
       
       const qrSvgContent = svgString.replace(/<svg[^>]*>/i, '').replace(/<\/svg>/i, '');
       const finalSvg = `
