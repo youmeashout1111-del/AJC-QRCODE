@@ -389,7 +389,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .tab-content.active {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   animation: fadeIn 0.4s ease;
 }
 
@@ -494,8 +497,32 @@ h1, h2, h3, h4, h5, h6 {
 /* Scan logs table */
 .table-wrapper {
   overflow-x: auto;
+  overflow-y: auto;
   border-radius: 12px;
   border: 1px solid var(--border-glass);
+  flex: 1;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(220, 20, 30, 0.25) rgba(0, 0, 0, 0.03);
+}
+
+.table-wrapper::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 10px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(220, 20, 30, 0.22);
+  border-radius: 10px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(220, 20, 30, 0.4);
 }
 
 table.logs-table {
@@ -506,15 +533,18 @@ table.logs-table {
 }
 
 table.logs-table th, table.logs-table td {
-  padding: 15px;
+  padding: 10px 8px;
   border-bottom: 1px solid var(--border-glass);
 }
 
 table.logs-table th {
+  position: sticky;
+  top: 0;
   background: #f1f5f9;
   font-family: var(--font-title);
   color: #0f172a;
   font-weight: 700;
+  z-index: 5;
 }
 
 table.logs-table tbody tr {
