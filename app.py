@@ -205,10 +205,13 @@ def init_db():
         );
         """,
         """
-        CREATE TABLE IF NOT EXISTS settings (
+            CREATE TABLE IF NOT EXISTS settings (
             key    TEXT PRIMARY KEY,
             value  TEXT
         );
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS idx_scans_qr_id ON scans (qr_id);
         """
     ]
     
