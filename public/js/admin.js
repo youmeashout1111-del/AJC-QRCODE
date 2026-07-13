@@ -266,6 +266,8 @@ function setupEventListeners() {
   document.getElementById('search-logs').addEventListener('input', applyLogFilters);
   document.getElementById('filter-log-date').addEventListener('change', applyLogFilters);
   document.getElementById('filter-log-team').addEventListener('change', applyLogFilters);
+  if (document.getElementById('filter-log-depot')) document.getElementById('filter-log-depot').addEventListener('change', applyLogFilters);
+  if (document.getElementById('filter-log-market')) document.getElementById('filter-log-market').addEventListener('change', applyLogFilters);
   document.getElementById('btn-clear-log-filters').addEventListener('click', clearLogFilters);
 
   // Select all checkbox for QRs
@@ -688,8 +690,10 @@ function renderScanLogs() {
   emptyState.classList.add('hidden');
   tableContainer.classList.remove('hidden');
   
-  // Populate the team filter dropdown options based on current logs
+  // Populate the team, depot, and market filter dropdown options based on current logs
   populateTeamFilterDropdown();
+  populateDepotFilterDropdown();
+  populateMarketFilterDropdown();
   
   scanLogs.forEach(log => {
     const row = document.createElement('tr');
@@ -697,6 +701,8 @@ function renderScanLogs() {
     // Save details as data attributes for easier filtering
     row.dataset.timestamp = log.timestamp;
     row.dataset.qrId = log.qr_id;
+    row.dataset.qrName = log.qr_name || '';
+    row.dataset.location = log.location || '';
     
     // Format timestamp nicely
     const dateObj = new Date(log.timestamp);
@@ -1068,7 +1074,6 @@ function populateTeamFilterDropdown() {
   const currentSelection = select.value;
   select.innerHTML = '<option value="">-- ទាំងអស់ --</option>';
   
-  // Extract unique qr_ids
   const uniqueTeams = [...new Set(scanLogs.map(log => log.qr_id).filter(Boolean))];
   uniqueTeams.sort().forEach(teamId => {
     const opt = document.createElement('option');
@@ -1077,33 +1082,80 @@ function populateTeamFilterDropdown() {
     select.appendChild(opt);
   });
   
-  // Restore selection
   if (currentSelection && uniqueTeams.includes(currentSelection)) {
     select.value = currentSelection;
   }
 }
 
-// Apply multi-filters: Search query, Date picker, Sales Team selector
+// Populate Depot filter dropdown options dynamically
+function populateDepotFilterDropdown() {
+  const select = document.getElementById('filter-log-depot');
+  if (!select) return;
+  
+  const currentSelection = select.value;
+  select.innerHTML = '<option value="">-- ទាំងអស់ --</option>';
+  
+  const uniqueDepots = [...new Set(scanLogs.map(log => log.qr_name).filter(Boolean))];
+  uniqueDepots.sort().forEach(depot => {
+    const opt = document.createElement('option');
+    opt.value = depot;
+    opt.textContent = depot;
+    select.appendChild(opt);
+  });
+  
+  if (currentSelection && uniqueDepots.includes(currentSelection)) {
+    select.value = currentSelection;
+  }
+}
+
+// Populate Market filter dropdown options dynamically
+function populateMarketFilterDropdown() {
+  const select = document.getElementById('filter-log-market');
+  if (!select) return;
+  
+  const currentSelection = select.value;
+  select.innerHTML = '<option value="">-- ទាំងអស់ --</option>';
+  
+  const uniqueMarkets = [...new Set(scanLogs.map(log => log.location).filter(Boolean))];
+  uniqueMarkets.sort().forEach(market => {
+    const opt = document.createElement('option');
+    opt.value = market;
+    opt.textContent = market;
+    select.appendChild(opt);
+  });
+  
+  if (currentSelection && uniqueMarkets.includes(currentSelection)) {
+    select.value = currentSelection;
+  }
+}
+
+// Apply multi-filters: Search query, Date picker, Sales Team selector, Depot, Market
 function applyLogFilters() {
   const query = document.getElementById('search-logs').value.toLowerCase().trim();
   const dateVal = document.getElementById('filter-log-date').value; // YYYY-MM-DD
   const teamVal = document.getElementById('filter-log-team').value;
+  const depotVal = document.getElementById('filter-log-depot') ? document.getElementById('filter-log-depot').value : '';
+  const marketVal = document.getElementById('filter-log-market') ? document.getElementById('filter-log-market').value : '';
   
   const rows = document.querySelectorAll('#logs-table-body tr');
   let visibleCount = 0;
-  let hasActiveFilter = !!(query || dateVal || teamVal);
+  let hasActiveFilter = !!(query || dateVal || teamVal || depotVal || marketVal);
   
   rows.forEach(row => {
     const text = row.textContent.toLowerCase();
     const rowDate = row.dataset.timestamp ? row.dataset.timestamp.slice(0, 10) : '';
     const rowTeam = row.dataset.qrId || '';
+    const rowDepot = row.dataset.qrName || '';
+    const rowMarket = row.dataset.location || '';
     
     // Check match for each filter
     const matchSearch = !query || text.includes(query);
     const matchDate = !dateVal || rowDate === dateVal;
     const matchTeam = !teamVal || rowTeam === teamVal;
+    const matchDepot = !depotVal || rowDepot === depotVal;
+    const matchMarket = !marketVal || rowMarket === marketVal;
     
-    if (matchSearch && matchDate && matchTeam) {
+    if (matchSearch && matchDate && matchTeam && matchDepot && matchMarket) {
       row.style.display = '';
       visibleCount++;
     } else {
@@ -1138,6 +1190,8 @@ function clearLogFilters() {
   document.getElementById('search-logs').value = '';
   document.getElementById('filter-log-date').value = '';
   document.getElementById('filter-log-team').value = '';
+  if (document.getElementById('filter-log-depot')) document.getElementById('filter-log-depot').value = '';
+  if (document.getElementById('filter-log-market')) document.getElementById('filter-log-market').value = '';
   applyLogFilters();
 }
 
