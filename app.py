@@ -457,6 +457,10 @@ def create_qrcode():
     if not frame_image:
         frame_image = request.form.get('frame_template', 'default_frame.png')
 
+    # Proactively clean up any existing/orphan scans with this qr_id to guarantee 0 scans on creation
+    q_clean = "DELETE FROM scans WHERE qr_id = %s" if is_pg else "DELETE FROM scans WHERE qr_id = ?"
+    execute_query(q_clean, (qr_id,), commit=True)
+
     now = get_ict_now()
     q_ins = """
         INSERT INTO qrcodes
