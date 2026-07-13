@@ -1305,3 +1305,50 @@ table.logs-table tbody tr:hover {
   white-space: nowrap;
 }
 
+/* Custom scrollbar for key lists */
+#admin-keys-list::-webkit-scrollbar,
+#moderator-keys-list::-webkit-scrollbar,
+#user-keys-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+#admin-keys-list::-webkit-scrollbar-track,
+#moderator-keys-list::-webkit-scrollbar-track,
+#user-keys-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 10px;
+}
+
+#admin-keys-list::-webkit-scrollbar-thumb,
+#moderator-keys-list::-webkit-scrollbar-thumb,
+#user-keys-list::-webkit-scrollbar-thumb {
+  background: rgba(220, 20, 30, 0.25);
+  border-radius: 10px;
+}
+
+#admin-keys-list::-webkit-scrollbar-thumb:hover,
+#moderator-keys-list::-webkit-scrollbar-thumb:hover,
+#user-keys-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(220, 20, 30, 0.45);
+}
+
+#admin-keys-list,
+#moderator-keys-list,
+#user-keys-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(220, 20, 30, 0.25) rgba(0, 0, 0, 0.03);
+}
+
+@media (max-width: 990px) {
+  .keys-lists-flex-row {
+    overflow-x: auto;
+    padding-bottom: 12px;
+  }
+  .keys-lists-flex-row > div {
+    min-width: 280px;
+    flex-shrink: 0;
+  }
+}
+
+
+
