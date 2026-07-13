@@ -362,6 +362,7 @@ def get_qrcodes():
         FROM qrcodes q
         LEFT JOIN scans s ON q.id = s.qr_id
         GROUP BY q.id
+        ORDER BY q.created_at DESC
     """
     rows = execute_query(query, fetch_all=True)
     result = []

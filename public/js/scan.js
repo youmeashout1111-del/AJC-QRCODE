@@ -7,10 +7,18 @@ let capturedImageSrc = null;
 let userLatitude = null;
 let userLongitude = null;
 
+// Image editing state (Zoom & Drag/Pan)
+let loadedUserImg = null;
+let loadedFrameImg = null;
+let imageZoom = 1.0;
+let imagePanX = 0.0;
+let imagePanY = 0.0;
+
 // DOM Elements
 document.addEventListener('DOMContentLoaded', () => {
   parseQueryParams();
   setupEventListeners();
+  setupImageEditorListeners();
 });
 
 // Parse query params to get QR ID
@@ -348,82 +356,142 @@ function handleFileUpload(e) {
   reader.readAsDataURL(file);
 }
 
-// Step 3: Draw Canvas layering (Photo + Frame template overlay + Hashtag text watermark)
-function compileFramedPhoto() {
+// Setup mouse and touch listeners for interactive dragging and zooming
+function setupImageEditorListeners() {
   const canvas = document.getElementById('result-canvas');
+  if (canvas) {
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    
+    const getCanvasScale = () => {
+      const rect = canvas.getBoundingClientRect();
+      return 800 / (rect.width || 800);
+    };
+    
+    const dragStart = (x, y) => {
+      isDragging = true;
+      startX = x;
+      startY = y;
+    };
+    
+    const dragMove = (x, y) => {
+      if (!isDragging || !loadedUserImg) return;
+      const dx = x - startX;
+      const dy = y - startY;
+      const scale = getCanvasScale();
+      
+      // Update pan offset relative to zoom factor
+      imagePanX += (dx * scale) / imageZoom;
+      imagePanY += (dy * scale) / imageZoom;
+      
+      startX = x;
+      startY = y;
+      
+      redrawCanvas();
+    };
+    
+    const dragEnd = () => {
+      isDragging = false;
+    };
+    
+    // Mouse listeners
+    canvas.addEventListener('mousedown', (e) => dragStart(e.clientX, e.clientY));
+    canvas.addEventListener('mousemove', (e) => dragMove(e.clientX, e.clientY));
+    canvas.addEventListener('mouseup', dragEnd);
+    canvas.addEventListener('mouseleave', dragEnd);
+    
+    // Touch listeners
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        dragStart(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    });
+    canvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1) {
+        e.preventDefault(); // Prevent scrolling on mobile while adjusting image placement
+        dragMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: false });
+    canvas.addEventListener('touchend', dragEnd);
+  }
+  
+  // Set up zoom range slider listener
+  const slider = document.getElementById('zoom-slider');
+  if (slider) {
+    slider.addEventListener('input', (e) => {
+      imageZoom = parseFloat(e.target.value);
+      redrawCanvas();
+    });
+  }
+}
+
+// Redraw composite canvas with current zoom and pan values
+function redrawCanvas() {
+  const canvas = document.getElementById('result-canvas');
+  if (!canvas || !loadedUserImg || !loadedFrameImg) return;
   const ctx = canvas.getContext('2d');
   
-  // Canvas Resolution fixed 800x800
-  canvas.width = 800;
-  canvas.height = 800;
+  // Clear canvas
+  ctx.clearRect(0, 0, 800, 800);
   
+  // Draw user image with zoom and pan transform
+  ctx.save();
+  ctx.translate(400, 400); // Translate origin to canvas center
+  ctx.scale(imageZoom, imageZoom); // Scale around center
+  ctx.translate(imagePanX, imagePanY); // Apply translation offset
+  
+  const iw = loadedUserImg.width;
+  const ih = loadedUserImg.height;
+  const scaleX = 800 / iw;
+  const scaleY = 800 / ih;
+  const defaultScale = Math.max(scaleX, scaleY);
+  
+  const nw = iw * defaultScale;
+  const nh = ih * defaultScale;
+  
+  // Draw centered
+  ctx.drawImage(loadedUserImg, -nw / 2, -nh / 2, nw, nh);
+  ctx.restore();
+  
+  // Draw frame mask overlay on top
+  ctx.drawImage(loadedFrameImg, 0, 0, 800, 800);
+}
+
+// Step 3: Draw Canvas layering (Photo + Frame template overlay + Hashtag text watermark)
+function compileFramedPhoto() {
+  // Reset image adjustment variables
+  imageZoom = 1.0;
+  imagePanX = 0.0;
+  imagePanY = 0.0;
+  
+  const slider = document.getElementById('zoom-slider');
+  if (slider) slider.value = 1.0;
+
   const userImg = new Image();
   userImg.onload = function() {
-    // 1. Draw User Photo inside cover aspect ratio
-    drawImageCover(ctx, userImg, 0, 0, 800, 800);
+    loadedUserImg = userImg;
     
-    // 2. Load and overlay Frame template
     const frameImg = new Image();
     frameImg.onload = function() {
-      ctx.drawImage(frameImg, 0, 0, 800, 800);
+      loadedFrameImg = frameImg;
       
-      // 3. (Hashtag watermark drawing removed as requested)
+      // Perform initial composite render
+      redrawCanvas();
       
-      // Unlock Step 3
+      // Unlock Step 3 preview section
       document.getElementById('step-2').classList.add('hidden');
       document.getElementById('step-3').classList.remove('hidden');
       updateProgressBar(3);
       showToast('រូបភាពបង្កើតរួចរាល់!', 'success');
     };
     
-    // Enable crossOrigin just in case
     frameImg.crossOrigin = 'Anonymous';
     // Use the exact same frame overlay shown on the camera preview
     frameImg.src = document.getElementById('camera-frame-mask').src;
   };
   
   userImg.src = capturedImageSrc;
-}
-
-// Draw Image in standard "background-size: cover" behavior on canvas
-function drawImageCover(ctx, img, x, y, w, h, offsetX = 0.5, offsetY = 0.5) {
-  const iw = img.width;
-  const ih = img.height;
-  const r = Math.min(w / iw, h / ih);
-  let nw = iw * r;
-  let nh = ih * r;
-  let cx, cy, cw, ch;
-
-  // Decide source rectangle
-  if (nw < w) {
-    // Use wider source aspect
-    const scale = w / nw;
-    nw *= scale;
-    nh *= scale;
-  }
-  if (nh < h) {
-    // Use taller source aspect
-    const scale = h / nh;
-    nw *= scale;
-    nh *= scale;
-  }
-
-  // Crop source dimensions
-  cw = iw / (nw / w);
-  ch = ih / (nh / h);
-
-  // Offset crops
-  cx = (iw - cw) * offsetX;
-  cy = (ih - ch) * offsetY;
-
-  // Make sure bounds are correct
-  if (cx < 0) cx = 0;
-  if (cy < 0) cy = 0;
-  if (cw > iw) cw = iw;
-  if (ch > ih) ch = ih;
-
-  // Draw image
-  ctx.drawImage(img, cx, cy, cw, ch, x, y, w, h);
 }
 
 // Download final merged canvas photo
@@ -513,45 +581,21 @@ function copyTextFallback(text) {
   document.body.removeChild(textArea);
 }
 
-// Share click: download photo, copy hashtag, display helper guide popup
+// Share click: redirect directly to social media platforms
 window.shareToSocial = function(platform) {
-  // 1. Force auto-downloading photo so they have it locally
-  downloadFramedPhoto();
-  
-  // 2. Copy hashtag to clipboard with secure context fallback
-  const hashtagText = qrConfig.hashtag || "";
-  if (hashtagText) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(hashtagText).catch(err => {
-        console.warn('Clipboard API error, using fallback:', err);
-        copyTextFallback(hashtagText);
-      });
-    } else {
-      copyTextFallback(hashtagText);
-    }
-  }
-  
-  // 3. Configure platform redirections
   let redirectUrl = "";
-  let platformKh = "";
   
   if (platform === 'facebook') {
     redirectUrl = qrConfig.facebook_url || "https://www.facebook.com";
-    platformKh = "Facebook";
   } else if (platform === 'tiktok') {
     redirectUrl = qrConfig.tiktok_url || "https://www.tiktok.com";
-    platformKh = "TikTok";
   } else if (platform === 'youtube') {
     redirectUrl = qrConfig.youtube_url || "https://www.youtube.com";
-    platformKh = "YouTube";
   }
   
-  // Update Guide Modal buttons & UI
-  document.getElementById('btn-social-redirect').href = redirectUrl;
-  document.getElementById('btn-social-redirect').innerHTML = `ទៅកាន់ ${platformKh} <i class="fa-solid fa-up-right-from-square"></i>`;
-  
-  // Display guide popup modal
-  document.getElementById('guide-overlay').style.display = 'flex';
+  if (redirectUrl) {
+    window.open(redirectUrl, '_blank');
+  }
 }
 
 // Retake flow: reset to step 2 selection

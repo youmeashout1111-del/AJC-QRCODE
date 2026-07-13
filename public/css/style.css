@@ -314,13 +314,15 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-glass);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: var(--text-main) !important;
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(220, 20, 30, 0.04);
+  border-color: var(--border-focus);
+  color: var(--border-focus) !important;
   transform: translateY(-1px);
 }
 
@@ -368,7 +370,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .tab-btn.active {
-  color: #fff;
+  color: var(--border-focus);
 }
 
 .tab-btn.active::after {
@@ -525,8 +527,9 @@ table.logs-table tbody tr:hover {
 }
 
 .badge-id {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--border-glass);
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--text-main);
   padding: 2px 8px;
   border-radius: 4px;
   font-family: monospace;
@@ -657,7 +660,7 @@ table.logs-table tbody tr:hover {
 }
 
 .progress-step.active span {
-  color: #fff;
+  color: var(--text-main);
 }
 
 .progress-step.completed .prog-circle {
@@ -759,21 +762,22 @@ table.logs-table tbody tr:hover {
 }
 
 .source-btn {
-  background: rgba(255, 255, 255, 0.02);
+  background: #ffffff;
   border: 1px solid var(--border-glass);
   border-radius: 14px;
   padding: 25px 20px;
   text-align: center;
-  color: #fff;
+  color: var(--text-main);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
 }
 
 .source-btn:hover {
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(220, 20, 30, 0.04);
   border-color: var(--border-focus);
   transform: translateY(-3px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), 0 0 15px rgba(255, 51, 68, 0.05);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.06), 0 0 15px rgba(255, 51, 68, 0.05);
 }
 
 .source-btn i {
@@ -792,10 +796,11 @@ table.logs-table tbody tr:hover {
 
 /* Social Share Block */
 .social-share-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  display: flex;
+  justify-content: center;
   gap: 12px;
   margin-top: 20px;
+  flex-wrap: nowrap;
 }
 
 .share-btn {
@@ -813,6 +818,9 @@ table.logs-table tbody tr:hover {
   transition: all 0.3s ease;
   border: none;
   font-size: 0.95rem;
+  flex: 1;
+  max-width: 160px;
+  min-width: 80px;
 }
 
 .share-btn i {

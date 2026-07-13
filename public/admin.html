@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="google" content="notranslate">
   <title>ផ្ទាំងគ្រប់គ្រង QR Code & តាមដានការ Scan - AJC</title>
   
   <!-- FontAwesome Icons -->
@@ -85,11 +86,11 @@
         <span id="server-status" class="qr-tag" style="background: rgba(76, 175, 80, 0.1); color: #4CAF50; border-color: rgba(76,175,80,0.2); white-space: nowrap;">
           <i class="fa-solid fa-circle-check"></i> Server ដំណើរការធម្មតា
         </span>
-        <span id="welcome-badge" class="hidden" style="font-size: 0.82rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 4px 12px; white-space: nowrap;">
-          <i class="fa-solid fa-circle-user" style="color: #00e5ff;"></i>
-          <span>សូមស្វាគមន៍៖ </span><strong id="welcome-name" style="color: #fff;"></strong>
+        <span id="welcome-badge" class="hidden" style="font-size: 0.82rem; color: #8b0000; display: flex; align-items: center; gap: 6px; background: rgba(220, 20, 30, 0.05); border: 1px solid rgba(220, 20, 30, 0.15); border-radius: 20px; padding: 4px 12px; white-space: nowrap;">
+          <i class="fa-solid fa-circle-user" style="color: #ff3344;"></i>
+          <span>សូមស្វាគមន៍៖ </span><strong id="welcome-name" style="color: #8b0000; font-weight: 700;"></strong>
         </span>
-        <button id="btn-logout" class="btn btn-secondary btn-sm hidden" style="padding: 6px 12px; background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); white-space: nowrap; flex-shrink: 0;">
+        <button id="btn-logout" class="btn btn-secondary btn-sm hidden" style="padding: 6px 12px; background: #ffffff; border: 1px solid rgba(220, 20, 30, 0.25); color: #8b0000; font-weight: 600; white-space: nowrap; flex-shrink: 0;">
           <i class="fa-solid fa-right-from-bracket"></i> ចាកចេញ
         </button>
       </div>
@@ -159,18 +160,18 @@
           </div>
 
           <!-- Restored Sidebar Frame Manager with Instant Upload & Live List -->
-          <div class="form-group" id="sidebar-frame-manager-group" style="display: none; border: 1px solid rgba(255, 255, 255, 0.08); padding: 12px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); margin-bottom: 20px;">
-            <label style="margin-bottom: 8px; color: #fff; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+          <div class="form-group" id="sidebar-frame-manager-group" style="display: none; border: 1px solid rgba(220, 20, 30, 0.15); padding: 12px; border-radius: 8px; background: #ffffff; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);">
+            <label style="margin-bottom: 8px; color: #1e293b; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
               <span>គ្រប់គ្រង Photo Frame Cover *</span>
-              <span id="upload-status" style="font-size: 0.72rem; color: #00f2fe;"></span>
+              <span id="upload-status" style="font-size: 0.72rem; color: #ff3344;"></span>
             </label>
             
             <!-- Upload Box Trigger -->
             <div class="frame-templates-grid" style="grid-template-columns: 1fr; margin-bottom: 12px;">
-              <div class="frame-option" id="upload-custom-trigger" style="height: 70px; cursor: pointer; border-radius: 6px; border: 2px dashed rgba(0, 242, 254, 0.4); background: rgba(0, 242, 254, 0.03); display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
-                <div class="file-upload-wrapper" style="text-align: center;">
-                  <i class="fa-solid fa-cloud-arrow-up" id="upload-icon" style="font-size: 1.4rem; color: #00f2fe; margin-bottom: 2px;"></i>
-                  <div style="font-size: 0.78rem; font-weight: 600; color: #fff;" id="upload-text">ចុចទីនេះ ដើម្បី Upload Frame</div>
+              <div id="upload-custom-trigger" style="height: 70px; cursor: pointer; border-radius: 12px; border: 2px dashed rgba(220, 20, 30, 0.35); background: rgba(220, 20, 30, 0.02); display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
+                <div style="text-align: center;">
+                  <i class="fa-solid fa-cloud-arrow-up" id="upload-icon" style="font-size: 1.4rem; color: #ff3344; margin-bottom: 2px;"></i>
+                  <div style="font-size: 0.78rem; font-weight: 600; color: #8b0000;" id="upload-text">ចុចទីនេះ ដើម្បី Upload Frame</div>
                 </div>
               </div>
             </div>
@@ -331,8 +332,8 @@
           </div>
 
           <!-- GPS Secure Context Alert Info -->
-          <div style="background: rgba(0, 242, 254, 0.05); border: 1px solid rgba(0, 242, 254, 0.1); border-radius: 12px; padding: 12px 15px; margin-bottom: 20px; font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 10px;">
-            <i class="fa-solid fa-circle-info" style="color: #00f2fe; font-size: 1rem;"></i>
+          <div style="background: rgba(220, 20, 30, 0.04); border: 1px solid rgba(220, 20, 30, 0.12); border-radius: 12px; padding: 12px 15px; margin-bottom: 20px; font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 10px;">
+            <i class="fa-solid fa-circle-info" style="color: #ff3344; font-size: 1rem;"></i>
             <span>
               <strong>ចំណាំ៖</strong> ទីតាំង GPS របស់អតិថិជននឹងមិនត្រូវបានចាប់ឡើយ ប្រសិនបើពួកគេដំណើរការតំណភ្ជាប់ស្កេនលើទូរស័ព្ទដៃដែលគ្មានសុវត្ថិភាព (HTTP)។ ដើម្បីឱ្យចាប់ទីតាំង GPS បានត្រឹមត្រូវ សូមប្រាកដថាតំណភ្ជាប់ស្កេនដំណើរការលើ <strong>HTTPS</strong> (ឧទាហរណ៍៖ ប្រើប្រាស់ Ngrok សម្រាប់តភ្ជាប់ HTTPS)។
             </span>
@@ -409,14 +410,14 @@
           </div>
 
           <!-- Recovery Setting Form -->
-          <div class="glass-panel" style="padding: 20px; margin-bottom: 25px; border-color: rgba(0, 242, 254, 0.15);">
-            <h3 style="font-size: 1rem; margin-bottom: 15px;"><i class="fa-solid fa-circle-info" style="color: #00f2fe;"></i> កំណត់ព័ត៌មានទំនាក់ទំនងពេលភ្លេចលេខកូដ (Recovery Helper Settings)</h3>
+          <div class="glass-panel" style="padding: 20px; margin-bottom: 25px; border-color: rgba(220, 20, 30, 0.15);">
+            <h3 style="font-size: 1rem; margin-bottom: 15px;"><i class="fa-solid fa-circle-info" style="color: #ff3344;"></i> កំណត់ព័ត៌មានទំនាក់ទំនងពេលភ្លេចលេខកូដ (Recovery Helper Settings)</h3>
             <form id="recovery-settings-form" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
               <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 300px;">
                 <label for="recovery-contact-input" style="font-size: 0.85rem;">លេខទូរស័ព្ទ អត្ថបទជំនួយ ឬតេឡេក្រាមសម្រាប់ទាក់ទង *</label>
-                <input type="text" id="recovery-contact-input" required placeholder="ឧ. សូមទាក់ទងមកកាន់ Telegram: @admin ឬ លេខទូរស័ព្ទ: 096 000 0000" style="margin-bottom: 0; height: 42px; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff;">
+                <input type="text" id="recovery-contact-input" required placeholder="ឧ. សូមទាក់ទងមកកាន់ Telegram: @admin ឬ លេខទូរស័ព្ទ: 096 000 0000" style="margin-bottom: 0; height: 42px; background: #ffffff; border: 1px solid rgba(0,0,0,0.15); color: #1e293b;">
               </div>
-              <button type="submit" class="btn btn-primary" style="height: 42px; background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);">
+              <button type="submit" class="btn btn-primary" style="height: 42px; background: linear-gradient(135deg, #ff3344 0%, #b3001e 100%);">
                 <i class="fa-solid fa-floppy-disk"></i> រក្សាទុក
               </button>
             </form>
@@ -426,7 +427,7 @@
           <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
             <!-- Admin Keys List -->
             <div id="admin-keys-card" class="glass-panel" style="padding: 15px;">
-              <h4 style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 12px; color: #ff007f;">
+              <h4 style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 12px; color: #ff1a2b;">
                 <i class="fa-solid fa-user-shield"></i> Admin Keys
               </h4>
               <ul id="admin-keys-list" style="list-style: none; padding: 0; margin: 0;">
@@ -436,7 +437,7 @@
 
             <!-- Moderator Keys List -->
             <div id="moderator-keys-card" class="glass-panel" style="padding: 15px;">
-              <h4 style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 12px; color: #00f2fe;">
+              <h4 style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 12px; color: #ff3344;">
                 <i class="fa-solid fa-user-gear"></i> Moderator Keys
               </h4>
               <ul id="moderator-keys-list" style="list-style: none; padding: 0; margin: 0;">

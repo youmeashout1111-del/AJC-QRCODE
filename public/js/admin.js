@@ -501,23 +501,38 @@ function renderQRCodes() {
     <colgroup>
       ${isAdmin ? '<col style="width:36px">' : ''}
       <col style="width:54px">
-      <col style="min-width:80px">
-      <col style="min-width:70px">
       <col style="min-width:100px">
-      <col style="min-width:80px">
-      <col style="width:60px">
-      <col style="width:${isAdmin ? '110px' : '90px'}">
+      <col style="min-width:100px">
+      <col style="min-width:90px">
+      <col style="min-width:110px">
+      <col style="width:55px">
+      <col style="width:${isAdmin ? '162px' : '130px'}">
     </colgroup>
     <thead>
       <tr>
-        ${isAdmin ? '<th style="text-align:center;padding:10px 6px;"></th>' : ''}
-        <th style="text-align:center;padding:10px 6px;">QR</th>
-        <th style="padding:10px 8px;">Depot</th>
-        <th style="padding:10px 8px;">Sales Team</th>
-        <th style="padding:10px 8px;">Hashtag</th>
-        <th style="padding:10px 8px;">Location</th>
-        <th style="text-align:center;padding:10px 6px;">Scans</th>
-        <th style="text-align:center;padding:10px 6px;">Actions</th>
+        ${isAdmin ? '<th style="text-align:center;padding:10px 6px;vertical-align:top;"></th>' : ''}
+        <th style="text-align:center;padding:10px 6px;vertical-align:top;">QR</th>
+        <th style="padding:10px 8px;vertical-align:top;">
+          <div style="margin-bottom:6px;">Depot</div>
+          <select id="filter-depot" style="width:100%;padding:4px;font-size:0.75rem;border-radius:6px;border:1px solid rgba(0,0,0,0.15);color:var(--text-main);font-weight:normal;background:#fff;cursor:pointer;">
+            <option value="">ទាំងអស់</option>
+          </select>
+        </th>
+        <th style="padding:10px 8px;vertical-align:top;">
+          <div style="margin-bottom:6px;">Sales Team</div>
+          <select id="filter-sales-team" style="width:100%;padding:4px;font-size:0.75rem;border-radius:6px;border:1px solid rgba(0,0,0,0.15);color:var(--text-main);font-weight:normal;background:#fff;cursor:pointer;">
+            <option value="">ទាំងអស់</option>
+          </select>
+        </th>
+        <th style="padding:10px 8px;vertical-align:top;">Hashtag</th>
+        <th style="padding:10px 8px;vertical-align:top;">
+          <div style="margin-bottom:6px;">Location</div>
+          <select id="filter-location" style="width:100%;padding:4px;font-size:0.75rem;border-radius:6px;border:1px solid rgba(0,0,0,0.15);color:var(--text-main);font-weight:normal;background:#fff;cursor:pointer;">
+            <option value="">ទាំងអស់</option>
+          </select>
+        </th>
+        <th style="text-align:center;padding:10px 6px;vertical-align:top;">Scans</th>
+        <th style="text-align:center;padding:10px 6px;vertical-align:top;">Actions</th>
       </tr>
     </thead>
     <tbody id="qr-table-body"></tbody>
@@ -525,6 +540,38 @@ function renderQRCodes() {
 
   tableWrapper.appendChild(table);
   container.appendChild(tableWrapper);
+
+  // Populate dynamic dropdown filters
+  const filterDepot = document.getElementById('filter-depot');
+  const uniqueDepots = [...new Set(qrCodes.map(qr => qr.name).filter(Boolean))].sort();
+  uniqueDepots.forEach(depot => {
+    const opt = document.createElement('option');
+    opt.value = depot;
+    opt.textContent = depot;
+    filterDepot.appendChild(opt);
+  });
+
+  const filterSales = document.getElementById('filter-sales-team');
+  const uniqueSales = [...new Set(qrCodes.map(qr => qr.id).filter(Boolean))].sort();
+  uniqueSales.forEach(sales => {
+    const opt = document.createElement('option');
+    opt.value = sales;
+    opt.textContent = sales;
+    filterSales.appendChild(opt);
+  });
+
+  const filterLocation = document.getElementById('filter-location');
+  const uniqueLocs = [...new Set(qrCodes.map(qr => qr.default_location).filter(Boolean))].sort();
+  uniqueLocs.forEach(loc => {
+    const opt = document.createElement('option');
+    opt.value = loc;
+    opt.textContent = loc;
+    filterLocation.appendChild(opt);
+  });
+
+  [filterDepot, filterSales, filterLocation].forEach(el => {
+    if (el) el.addEventListener('change', applyFilters);
+  });
 
   const tbody = document.getElementById('qr-table-body');
 
@@ -551,7 +598,7 @@ function renderQRCodes() {
           <canvas id="canvas-qr-${qr.id}" style="width:34px;height:34px;display:block;"></canvas>
         </div>
       </td>
-      <td style="font-weight:700;vertical-align:middle;color:#fff;padding:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+      <td style="font-weight:700;vertical-align:middle;color:var(--text-main);padding:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
           title="${escapeHTML(qr.name)}">${escapeHTML(qr.name)}</td>
       <td style="vertical-align:middle;padding:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
           title="${escapeHTML(qr.id)}">
@@ -559,27 +606,27 @@ function renderQRCodes() {
       </td>
       <td style="vertical-align:middle;padding:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
           title="${hashLabel}">
-        <span style="font-size:0.78rem;color:#00f2fe;"><i class="fa-solid fa-hashtag" style="opacity:.6;"></i> ${hashLabel}</span>
+        <span style="font-size:0.78rem;color:#ff3344;"><i class="fa-solid fa-hashtag" style="opacity:.6;"></i> ${hashLabel}</span>
       </td>
-      <td style="vertical-align:middle;padding:8px;">${locLabel}</td>
-      <td style="text-align:center;vertical-align:middle;font-weight:700;color:#00e5ff;padding:8px 4px;">${qr.scan_count || 0}</td>
+      <td style="vertical-align:middle;padding:8px;color:var(--text-main);">${locLabel}</td>
+      <td style="text-align:center;vertical-align:middle;font-weight:700;color:#ff3344;padding:8px 4px;">${qr.scan_count || 0}</td>
       <td style="text-align:center;vertical-align:middle;padding:8px 4px;">
         <div style="display:flex;gap:4px;justify-content:center;flex-wrap:nowrap;">
-          <button class="btn btn-secondary btn-sm"
-            style="padding:5px 8px;font-size:0.75rem;min-width:0;"
+          <button type="button" class="btn btn-secondary btn-sm"
+            style="padding:5px 10px;font-size:0.7rem;gap:4px;min-width:62px;height:28px;"
             onclick="downloadSingleQR('${qr.id}','${escapeHTML(qr.name)}','png')"
             title="Download PNG">
-            <i class="fa-solid fa-file-image"></i><span class="btn-label"> PNG</span>
+            <i class="fa-solid fa-file-image"></i><span class="btn-label">PNG</span>
           </button>
-          <button class="btn btn-secondary btn-sm"
-            style="padding:5px 8px;font-size:0.75rem;min-width:0;"
+          <button type="button" class="btn btn-secondary btn-sm"
+            style="padding:5px 10px;font-size:0.7rem;gap:4px;min-width:62px;height:28px;"
             onclick="downloadSingleQR('${qr.id}','${escapeHTML(qr.name)}','svg')"
             title="Download SVG">
-            <i class="fa-solid fa-file-code"></i><span class="btn-label"> SVG</span>
+            <i class="fa-solid fa-file-code"></i><span class="btn-label">SVG</span>
           </button>
           ${isAdmin ? `
-          <button class="btn btn-danger btn-sm"
-            style="padding:5px 8px;font-size:0.75rem;min-width:0;"
+          <button type="button" class="btn btn-danger btn-sm"
+            style="padding:5px 8px;font-size:0.75rem;min-width:28px;height:28px;"
             onclick="deleteQRCode('${qr.id}')"
             title="លុប QR Code">
             <i class="fa-solid fa-trash"></i>
@@ -788,7 +835,7 @@ function drawQRWithText(qrId, qrName, defaultLocation, scanUrl, callback) {
     ctx.fillText(line1, 300, 55);
     
     // Format bottom line
-    const line2 = `ឈ្មោះផ្សារ៖ ${defaultLocation || ''}`;
+    const line2 = `ផ្សារ៖ ${defaultLocation || ''}`;
     
     // Draw bottom line
     ctx.font = "bold 26px 'Kantumruy Pro', Arial, sans-serif";
@@ -837,7 +884,7 @@ function downloadSingleQR(qrId, qrName, format) {
       } else if (/\d+/.test(qrId)) {
         line1 = `Team: ${qrId}`;
       }
-      const line2 = `ឈ្មោះផ្សារ៖ ${defaultLocation || ''}`;
+      const line2 = `ផ្សារ៖ ${defaultLocation || ''}`;
       
       const qrSvgContent = svgString.replace(/<svg[^>]*>/i, '').replace(/<\/svg>/i, '');
       const finalSvg = `
@@ -957,20 +1004,35 @@ function exportLogsToExcel() {
   showToast('បាននាំចេញទិន្នន័យជា Excel ដោយជោគជ័យ!', 'success');
 }
 
-// Filter/Search QR Codes
-function filterQRCodes(e) {
-  const query = e.target.value.toLowerCase().trim();
-  const cards = document.querySelectorAll('.qr-card');
+// Filter/Search QR Codes (unified table filter)
+function applyFilters() {
+  const query = (document.getElementById('search-qr')?.value || '').toLowerCase().trim();
   
-  cards.forEach(card => {
-    const text = card.querySelector('.qr-info').textContent.toLowerCase();
-    if (text.includes(query)) {
-      card.style.display = 'block';
-    } else {
-      card.style.display = 'none';
+  const depotVal = document.getElementById('filter-depot')?.value || '';
+  const salesVal = document.getElementById('filter-sales-team')?.value || '';
+  const locVal   = document.getElementById('filter-location')?.value || '';
+  
+  qrCodes.forEach(qr => {
+    const searchString = `${qr.name} ${qr.id} ${qr.hashtag || ''} ${qr.default_location || ''}`.toLowerCase();
+    
+    const matchesSearch = !query || searchString.includes(query);
+    const matchesDepot  = !depotVal || qr.name === depotVal;
+    const matchesSales  = !salesVal || qr.id === salesVal;
+    const matchesLoc    = !locVal || qr.default_location === locVal;
+    
+    const row = document.getElementById(`qr-row-${qr.id}`);
+    if (row) {
+      if (matchesSearch && matchesDepot && matchesSales && matchesLoc) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
     }
   });
 }
+
+// Map the old search input event handler name to applyFilters
+window.filterQRCodes = applyFilters;
 
 // Populate Sales Team filter dropdown options dynamically
 function populateTeamFilterDropdown() {
@@ -1777,29 +1839,29 @@ function renderFrames() {
       justify-content: space-between;
       padding: 8px 10px;
       border-radius: 6px;
-      border: 1px solid ${frame.is_active ? 'rgba(0, 242, 254, 0.4)' : 'rgba(255, 255, 255, 0.08)'};
-      background: ${frame.is_active ? 'rgba(0, 242, 254, 0.05)' : 'rgba(11, 7, 22, 0.3)'};
+      border: 1px solid ${frame.is_active ? 'rgba(220, 20, 30, 0.35)' : 'rgba(0, 0, 0, 0.08)'};
+      background: ${frame.is_active ? 'rgba(220, 20, 30, 0.04)' : '#ffffff'};
       transition: all 0.2s ease;
     `;
     
     row.innerHTML = `
       <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
         <!-- Active Checkbox/Tick Button -->
-        <button onclick="setActiveFrame(${frame.id})" style="background: none; border: none; cursor: pointer; color: ${frame.is_active ? '#00f2fe' : 'var(--text-muted)'}; font-size: 1.05rem; padding: 2px 6px; display: flex; align-items: center; transition: color 0.2s ease;">
+        <button type="button" onclick="setActiveFrame(${frame.id})" style="background: none; border: none; cursor: pointer; color: ${frame.is_active ? '#ff3344' : 'var(--text-muted)'}; font-size: 1.05rem; padding: 2px 6px; display: flex; align-items: center; transition: color 0.2s ease;">
           <i class="${frame.is_active ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle'}"></i>
         </button>
         
         <!-- Image Thumbnail -->
-        <img src="${frame.image_data}" style="width: 32px; height: 32px; object-fit: contain; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; flex-shrink: 0;">
+        <img src="${frame.image_data}" style="width: 32px; height: 32px; object-fit: contain; background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.08); border-radius: 4px; flex-shrink: 0;">
         
         <!-- Filename -->
-        <div style="font-size: 0.78rem; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;" title="${escapeHTML(frame.name)}">
+        <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;" title="${escapeHTML(frame.name)}">
           ${escapeHTML(frame.name)}
         </div>
       </div>
       
       <!-- Delete X Button -->
-      <button onclick="deleteSingleFrame(${frame.id})" style="background: none; border: none; cursor: pointer; color: var(--color-danger); opacity: 0.8; font-size: 0.95rem; padding: 4px 6px; display: flex; align-items: center; justify-content: center;" title="លុប">
+      <button type="button" onclick="deleteSingleFrame(${frame.id})" style="background: none; border: none; cursor: pointer; color: var(--color-danger); opacity: 0.8; font-size: 0.95rem; padding: 4px 6px; display: flex; align-items: center; justify-content: center;" title="លុប">
         <i class="fa-solid fa-xmark"></i>
       </button>
     `;
@@ -1815,7 +1877,7 @@ async function handleSidebarFrameUpload(file) {
   if (statusEl) statusEl.textContent = 'កំពុងបញ្ចូល...';
   if (uploadIcon) {
     uploadIcon.className = 'fa-solid fa-spinner fa-spin';
-    uploadIcon.style.color = '#00f2fe';
+    uploadIcon.style.color = '#ff3344';
   }
   if (uploadText) uploadText.textContent = 'កំពុងបញ្ចូល...';
   
@@ -1838,7 +1900,6 @@ async function handleSidebarFrameUpload(file) {
       return;
     }
     
-    showToast('បានបញ្ចូល Photo Frame ដោយជោគជ័យ!', 'success');
     await loadFramesData();
   } catch (err) {
     console.error('Sidebar upload error:', err);
@@ -1850,15 +1911,13 @@ async function handleSidebarFrameUpload(file) {
     if (statusEl) statusEl.textContent = '';
     if (uploadIcon) {
       uploadIcon.className = 'fa-solid fa-cloud-arrow-up';
-      uploadIcon.style.color = '#00f2fe';
+      uploadIcon.style.color = '#ff3344';
     }
     if (uploadText) uploadText.textContent = 'ចុចទីនេះ ដើម្បី Upload Frame';
   }
 }
 
 async function deleteSingleFrame(id) {
-  if (!confirm('តើអ្នកពិតជាចង់លុប Photo Frame នេះមែនទេ?')) return;
-  
   try {
     const res = await fetch(`/api/frames/${id}`, {
       method: 'DELETE',
@@ -1874,7 +1933,6 @@ async function deleteSingleFrame(id) {
       return;
     }
     
-    showToast('បានលុប Frame រួចរាល់!', 'success');
     await loadFramesData();
   } catch (err) {
     console.error('Delete frame error:', err);
@@ -1925,7 +1983,6 @@ async function setActiveFrame(id) {
       return;
     }
     
-    showToast('បានកំណត់យក Frame នេះមកប្រើប្រាស់!', 'success');
     await loadFramesData();
   } catch (err) {
     console.error('Set active frame error:', err);

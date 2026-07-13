@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="google" content="notranslate">
   <title>ស្កេន QR Code ថតរូបអនុស្សាវរីយ៍ - AJC</title>
   
   <!-- FontAwesome Icons -->
@@ -155,16 +156,31 @@
         </p>
 
         <!-- Canvas Container -->
-        <div class="canvas-preview-container">
+        <div class="canvas-preview-container" style="position: relative; cursor: move;">
           <canvas id="result-canvas" class="result-canvas" width="800" height="800"></canvas>
         </div>
 
+        <!-- Zoom Slider and Instructions -->
+        <div style="text-align: center; margin: 15px auto 20px auto; background: #ffffff; border: 1px solid rgba(220, 20, 30, 0.15); border-radius: 12px; padding: 12px 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); max-width: 380px;">
+          <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">
+            <i class="fa-solid fa-magnifying-glass-plus" style="color: #ff3344;"></i> ពង្រីក / បង្រួមរូបថត (Zoom Image)
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; justify-content: center; max-width: 300px; margin: 0 auto;">
+            <i class="fa-solid fa-minus" style="font-size: 0.8rem; color: var(--text-muted);"></i>
+            <input type="range" id="zoom-slider" min="1" max="4" step="0.02" value="1" style="flex: 1; height: 6px; border-radius: 3px; accent-color: #ff3344; cursor: pointer; outline: none; background: #eef1f6;">
+            <i class="fa-solid fa-plus" style="font-size: 0.8rem; color: var(--text-muted);"></i>
+          </div>
+          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 8px; font-weight: 600;">
+            <i class="fa-solid fa-arrows-up-down-left-right" style="color: #ff3344;"></i> អូសលើរូបភាពដើម្បីសារ៉េទីតាំង (Drag to Pan)
+          </div>
+        </div>
+
         <div style="text-align: center; margin-bottom: 20px;">
-          <div id="hashtag-container" style="display: inline-flex; align-items: center; background: rgba(0, 242, 254, 0.08); border: 1px solid rgba(0, 242, 254, 0.15); border-radius: 20px; padding: 6px 16px; cursor: pointer; transition: all 0.3s;" title="ចុចដើម្បីចម្លង Hashtag">
-            <span id="preview-hashtag" style="font-size: 1rem; font-weight: 600; color: #00f2fe;">
+          <div id="hashtag-container" style="display: inline-flex; align-items: center; background: rgba(220, 20, 30, 0.04); border: 1px solid rgba(220, 20, 30, 0.15); border-radius: 20px; padding: 6px 16px; cursor: pointer; transition: all 0.3s;" title="ចុចដើម្បីចម្លង Hashtag">
+            <span id="preview-hashtag" style="font-size: 1rem; font-weight: 700; color: #ff3344;">
               <i class="fa-solid fa-hashtag"></i> #AJC
             </span>
-            <span style="border-left: 1px solid rgba(0, 242, 254, 0.3); margin-left: 10px; padding-left: 10px; color: #fff; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px;">
+            <span style="border-left: 1px solid rgba(220, 20, 30, 0.2); margin-left: 10px; padding-left: 10px; color: #8b0000; font-weight: 700; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px;">
               <i class="fa-solid fa-copy"></i> ចម្លង (Copy)
             </span>
           </div>
