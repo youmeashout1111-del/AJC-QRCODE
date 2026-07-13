@@ -224,6 +224,18 @@ def init_db():
     finally:
         conn.close()
 
+    # Legacy Schema Auto-Migrations: ensure created_at column exists in keys, qrcodes, and frames tables
+    for tbl, col_name, col_t in [
+        ('keys', 'created_at', 'TEXT'),
+        ('qrcodes', 'created_at', 'TEXT'),
+        ('frames', 'created_at', 'TEXT')
+    ]:
+        try:
+            execute_query(f"ALTER TABLE {tbl} ADD COLUMN {col_name} {col_t}", commit=True)
+            print(f"✓ Auto-Migration: Added column {col_name} to {tbl} table.")
+        except Exception:
+            pass
+
     # Seed default settings
     try:
         conn = get_db_connection()

@@ -377,23 +377,23 @@
           </div>
 
           <!-- Add Key Form -->
-          <div class="glass-panel" style="padding: 20px; margin-bottom: 25px; border-color: rgba(255, 183, 3, 0.15);">
-            <h3 style="font-size: 1rem; margin-bottom: 15px;"><i class="fa-solid fa-plus-circle"></i> បន្ថែម Key ថ្មី</h3>
+          <div class="glass-panel" style="padding: 20px; margin-bottom: 25px; border-color: rgba(220, 20, 30, 0.15);">
+            <h3 style="font-size: 1rem; margin-bottom: 15px;"><i class="fa-solid fa-plus-circle" style="color: #ff3344;"></i> បន្ថែម Key ថ្មី</h3>
             <form id="add-key-form" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
               <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 240px;">
                 <label for="new-key-value" style="font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
                   <span>លេខកូដសម្ងាត់ (Key)</span>
-                  <a href="#" id="btn-generate-key" style="color: #00e5ff; text-decoration: none; font-size: 0.78rem; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles"></i> បង្កើត Key ស្វ័យប្រវត្ត</a>
+                  <a href="#" id="btn-generate-key" style="color: #ff3344; text-decoration: none; font-size: 0.78rem; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles"></i> បង្កើត Key ស្វ័យប្រវត្ត</a>
                 </label>
-                <input type="text" id="new-key-value" placeholder="បញ្ចូលលេខកូដ ឬទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្ត..." style="margin-bottom: 0; height: 42px; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff;">
+                <input type="text" id="new-key-value" placeholder="បញ្ចូលលេខកូដ ឬទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្ត..." style="margin-bottom: 0; height: 42px; background: #eef4ff; border: 1px solid rgba(0, 0, 0, 0.12); color: #1e293b;">
               </div>
               <div class="form-group" style="margin-bottom: 0; width: 220px;">
                 <label for="new-key-note" style="font-size: 0.85rem;">ឈ្មោះសម្គាល់ / ម្ចាស់ Key *</label>
-                <input type="text" id="new-key-note" placeholder="ឧ. ឈ្មោះបុគ្គលិក ឬសាខា..." required style="margin-bottom: 0; height: 42px; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff;">
+                <input type="text" id="new-key-note" placeholder="ឧ. ឈ្មោះបុគ្គលិក ឬសាខា..." required style="margin-bottom: 0; height: 42px; background: #eef4ff; border: 1px solid rgba(0, 0, 0, 0.12); color: #1e293b;">
               </div>
-              <div class="form-group" style="margin-bottom: 0; width: 150px;">
+              <div class="form-group" style="margin-bottom: 0; width: 180px;">
                 <label for="new-key-role" style="font-size: 0.85rem;">កម្រិតសិទ្ធិ (Role) *</label>
-                <select id="new-key-role" required style="margin-bottom: 0; height: 42px; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff;">
+                <select id="new-key-role" required style="margin-bottom: 0; height: 42px; background: #eef4ff; border: 1px solid rgba(0, 0, 0, 0.12); color: #1e293b; cursor: pointer;">
                   <option value="user" selected>User (មើលបានតែទិន្នន័យ)</option>
                   <option value="moderator" id="role-opt-moderator">Moderator (ស្មើ Admin តែលុប Key មិនបាន)</option>
                   <option value="admin" id="role-opt-admin">Admin (ពេញសិទ្ធិលើប្រព័ន្ធ)</option>
@@ -401,9 +401,9 @@
               </div>
               <div class="form-group" style="margin-bottom: 0; width: 100px;">
                 <label for="new-key-max-devices" style="font-size: 0.85rem;">ចំនួនឧបករណ៍ *</label>
-                <input type="number" id="new-key-max-devices" value="5" min="1" required style="margin-bottom: 0; height: 42px; background: rgba(11, 7, 22, 0.5); border-color: rgba(255,255,255,0.1); color: #fff; text-align: center;">
+                <input type="number" id="new-key-max-devices" value="5" min="1" required style="margin-bottom: 0; height: 42px; background: #eef4ff; border: 1px solid rgba(0, 0, 0, 0.12); color: #1e293b; text-align: center;">
               </div>
-              <button type="submit" class="btn btn-primary" style="height: 42px; background: linear-gradient(135deg, #ffb703 0%, #fb8500 100%);">
+              <button type="submit" class="btn btn-primary" style="height: 42px; background: linear-gradient(135deg, #ffb703 0%, #fb8500 100%); border: none;">
                 <i class="fa-solid fa-plus"></i> បន្ថែម Key
               </button>
             </form>
