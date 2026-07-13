@@ -1364,29 +1364,46 @@ async function loadKeysData() {
           li.style.justifyContent = 'space-between';
           li.style.alignItems = 'center';
           li.style.padding = '8px 0';
-          li.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+          li.style.borderBottom = '1px solid rgba(0,0,0,0.06)';
           
           const deviceCount = item.devices ? item.devices.length : 0;
           const noteHtml = item.note
-            ? `<span class="note-editable" data-note="${escapeHTML(item.note)}" onclick="updateKeyNote('${escapeHTML(item.key)}', 'admin', this)" style="color: #00e5ff; cursor: pointer; border-bottom: 1px dashed rgba(0,229,255,0.4); padding-bottom: 1px;" title="ចុចដើម្បីកែប្រែ">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>`
-            : `<span class="note-editable" data-note="" onclick="updateKeyNote('${escapeHTML(item.key)}', 'admin', this)" style="color: rgba(255,255,255,0.25); cursor: pointer; font-style: italic;" title="ចុចដើម្បីបន្ថែមឈ្មោះ">+ បន្ថែមឈ្មោះ</span>`;
+            ? `<span class="note-editable" data-note="${escapeHTML(item.note)}" onclick="updateKeyNote('${escapeHTML(item.key)}', 'admin', this)" style="color: #3b82f6; cursor: pointer; border-bottom: 1px dashed rgba(59,130,246,0.4); padding-bottom: 1px;" title="ចុចដើម្បីកែប្រែ">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>`
+            : `<span class="note-editable" data-note="" onclick="updateKeyNote('${escapeHTML(item.key)}', 'admin', this)" style="color: var(--text-muted); opacity: 0.6; cursor: pointer; font-style: italic;" title="ចុចដើម្បីបន្ថែមឈ្មោះ">+ បន្ថែមឈ្មោះ</span>`;
           
           const keyHtml = currentUserRole === 'admin'
-            ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'admin', this)" style="font-family: monospace; font-size: 0.95rem; color: #fff; cursor: pointer; border-bottom: 1px dashed rgba(255,255,255,0.25); padding-bottom: 1px;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
-            : `<span style="font-family: monospace; font-size: 0.95rem; color: #fff;">${escapeHTML(item.key)}</span>`;
+            ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'admin', this)" style="font-family: monospace; font-size: 0.95rem; color: #1e293b; cursor: pointer; border-bottom: 1px dashed rgba(0,0,0,0.25); padding-bottom: 1px;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
+            : `<span style="font-family: monospace; font-size: 0.95rem; color: #1e293b;">${escapeHTML(item.key)}</span>`;
+
+          // Date formatting helper
+          let dateStr = '';
+          if (item.created_at) {
+            try {
+              const d = new Date(item.created_at);
+              if (!isNaN(d.getTime())) {
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = String(d.getFullYear()).slice(-2);
+                const hours = String(d.getHours()).padStart(2, '0');
+                const minutes = String(d.getMinutes()).padStart(2, '0');
+                dateStr = `${day}/${month}/${year} ${hours}:${minutes}`;
+              }
+            } catch (err) {}
+          }
 
           li.innerHTML = `
             <div style="display: flex; flex-direction: column; gap: 4px;">
               ${keyHtml}
               <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: var(--text-muted);">
+                <div style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #64748b;">
                   <span>ឧបករណ៍៖ ${deviceCount} / </span>
-                  <input type="number" class="key-limit-input" value="${item.max_devices}" min="1" style="width: 45px; height: 20px; background: rgba(11,7,22,0.6); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: center; border-radius: 4px; padding: 0; font-size: 0.72rem;">
-                  <button class="btn btn-secondary btn-sm" onclick="updateKeyLimit('${escapeHTML(item.key)}', 'admin', this)" style="padding: 2px 6px; font-size: 0.65rem; border-color: rgba(0,229,255,0.3); color: #00e5ff; height: 20px; display: inline-flex; align-items: center; justify-content: center;" title="Update Limit">
+                  <input type="number" class="key-limit-input" value="${item.max_devices}" min="1" style="width: 45px; height: 20px; background: #eef4ff; border: 1px solid rgba(0,0,0,0.12); color: #1e293b; text-align: center; border-radius: 4px; padding: 0; font-size: 0.72rem;">
+                  <button class="btn btn-secondary btn-sm" onclick="updateKeyLimit('${escapeHTML(item.key)}', 'admin', this)" style="padding: 2px 6px; font-size: 0.65rem; border-color: rgba(59,130,246,0.3); color: #3b82f6; height: 20px; display: inline-flex; align-items: center; justify-content: center;" title="Update Limit">
                     <i class="fa-solid fa-check"></i>
                   </button>
                 </div>
                 ${noteHtml}
+                ${dateStr ? `<span style="font-size: 0.72rem; color: #64748b;">• បង្កើត៖ ${dateStr}</span>` : ''}
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 5px;">
@@ -1396,7 +1413,7 @@ async function loadKeysData() {
               <button class="btn btn-secondary btn-sm" onclick="resetKeyDevices('${escapeHTML(item.key)}', 'admin')" style="padding: 6px 10px; font-size: 0.8rem; color: #ffb703; border-color: rgba(255,183,3,0.3);" title="Reset Devices">
                 <i class="fa-solid fa-rotate-left"></i>
               </button>
-              ${isOnlyOne ? '<span style="font-size: 0.72rem; color: var(--text-muted);">លំដើម</span>' : `
+              ${isOnlyOne ? '<span style="font-size: 0.72rem; color: #64748b;">លំដើម</span>' : `
                 <button class="btn btn-danger btn-sm" onclick="deleteSecurityKey('${escapeHTML(item.key)}', 'admin')" style="padding: 6px 10px; font-size: 0.8rem;">
                   <i class="fa-solid fa-trash"></i>
                 </button>
@@ -1424,35 +1441,52 @@ async function loadKeysData() {
           li.style.justifyContent = 'space-between';
           li.style.alignItems = 'center';
           li.style.padding = '8px 0';
-          li.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+          li.style.borderBottom = '1px solid rgba(0,0,0,0.06)';
           
           const deviceCount = item.devices ? item.devices.length : 0;
           // Only admin can edit moderator key notes
           const noteHtml = currentUserRole === 'admin'
             ? (item.note
-                ? `<span class="note-editable" data-note="${escapeHTML(item.note)}" onclick="updateKeyNote('${escapeHTML(item.key)}', 'moderator', this)" style="color: #00e5ff; cursor: pointer; border-bottom: 1px dashed rgba(0,229,255,0.4); padding-bottom: 1px;" title="ចុចដើម្បីកែប្រែ">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>`
-                : `<span class="note-editable" data-note="" onclick="updateKeyNote('${escapeHTML(item.key)}', 'moderator', this)" style="color: rgba(255,255,255,0.25); cursor: pointer; font-style: italic;" title="ចុចដើបន្ថែមឈ្មោះ">+ បន្ថែមឈ្មោះ</span>`)
-            : (item.note ? `<span style="color: #00e5ff;">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>` : '');
+                ? `<span class="note-editable" data-note="${escapeHTML(item.note)}" onclick="updateKeyNote('${escapeHTML(item.key)}', 'moderator', this)" style="color: #3b82f6; cursor: pointer; border-bottom: 1px dashed rgba(59,130,246,0.4); padding-bottom: 1px;" title="ចុចដើម្បីកែប្រែ">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>`
+                : `<span class="note-editable" data-note="" onclick="updateKeyNote('${escapeHTML(item.key)}', 'moderator', this)" style="color: var(--text-muted); opacity: 0.6; cursor: pointer; font-style: italic;" title="ចុចដើម្បីបន្ថែមឈ្មោះ">+ បន្ថែមឈ្មោះ</span>`)
+            : (item.note ? `<span style="color: #3b82f6;">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>` : '');
           
           // Moderators can see their keys but only admin can delete moderator keys
           const canDeleteMod = currentUserRole === 'admin';
           
           const keyHtml = currentUserRole === 'admin'
-            ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'moderator', this)" style="font-family: monospace; font-size: 0.95rem; color: #fff; cursor: pointer; border-bottom: 1px dashed rgba(255,255,255,0.25); padding-bottom: 1px;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
-            : `<span style="font-family: monospace; font-size: 0.95rem; color: #fff;">${escapeHTML(item.key)}</span>`;
+            ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'moderator', this)" style="font-family: monospace; font-size: 0.95rem; color: #1e293b; cursor: pointer; border-bottom: 1px dashed rgba(0,0,0,0.25); padding-bottom: 1px;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
+            : `<span style="font-family: monospace; font-size: 0.95rem; color: #1e293b;">${escapeHTML(item.key)}</span>`;
+
+          // Date formatting helper
+          let dateStr = '';
+          if (item.created_at) {
+            try {
+              const d = new Date(item.created_at);
+              if (!isNaN(d.getTime())) {
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = String(d.getFullYear()).slice(-2);
+                const hours = String(d.getHours()).padStart(2, '0');
+                const minutes = String(d.getMinutes()).padStart(2, '0');
+                dateStr = `${day}/${month}/${year} ${hours}:${minutes}`;
+              }
+            } catch (err) {}
+          }
 
           li.innerHTML = `
             <div style="display: flex; flex-direction: column; gap: 4px;">
               ${keyHtml}
               <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: var(--text-muted);">
+                <div style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #64748b;">
                   <span>ឧបករណ៍៖ ${deviceCount} / </span>
-                  <input type="number" class="key-limit-input" value="${item.max_devices}" min="1" style="width: 45px; height: 20px; background: rgba(11,7,22,0.6); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: center; border-radius: 4px; padding: 0; font-size: 0.72rem;">
-                  <button class="btn btn-secondary btn-sm" onclick="updateKeyLimit('${escapeHTML(item.key)}', 'moderator', this)" style="padding: 2px 6px; font-size: 0.65rem; border-color: rgba(0,229,255,0.3); color: #00e5ff; height: 20px; display: inline-flex; align-items: center; justify-content: center;" title="Update Limit">
+                  <input type="number" class="key-limit-input" value="${item.max_devices}" min="1" style="width: 45px; height: 20px; background: #eef4ff; border: 1px solid rgba(0,0,0,0.12); color: #1e293b; text-align: center; border-radius: 4px; padding: 0; font-size: 0.72rem;">
+                  <button class="btn btn-secondary btn-sm" onclick="updateKeyLimit('${escapeHTML(item.key)}', 'moderator', this)" style="padding: 2px 6px; font-size: 0.65rem; border-color: rgba(59,130,246,0.3); color: #3b82f6; height: 20px; display: inline-flex; align-items: center; justify-content: center;" title="Update Limit">
                     <i class="fa-solid fa-check"></i>
                   </button>
                 </div>
                 ${noteHtml}
+                ${dateStr ? `<span style="font-size: 0.72rem; color: #64748b;">• បង្កើត៖ ${dateStr}</span>` : ''}
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 5px;">
@@ -1484,7 +1518,7 @@ async function loadKeysData() {
         li.style.justifyContent = 'space-between';
         li.style.alignItems = 'center';
         li.style.padding = '8px 0';
-        li.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+        li.style.borderBottom = '1px solid rgba(0,0,0,0.06)';
         
         const deviceCount = item.devices ? item.devices.length : 0;
         const isMasked = item.key.includes('***');
@@ -1493,9 +1527,9 @@ async function loadKeysData() {
         const noteHtml = isMasked ? ''
           : canEditNote
             ? (item.note
-                ? `<span class="note-editable" data-note="${escapeHTML(item.note)}" onclick="updateKeyNote('${escapeHTML(item.key)}', 'user', this)" style="color: #00e5ff; cursor: pointer; border-bottom: 1px dashed rgba(0,229,255,0.4); padding-bottom: 1px;" title="ចុចដើម្បីកែប្រែ">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>`
-                : `<span class="note-editable" data-note="" onclick="updateKeyNote('${escapeHTML(item.key)}', 'user', this)" style="color: rgba(255,255,255,0.25); cursor: pointer; font-style: italic;">+ បន្ថែមឈ្មោះ</span>`)
-            : (item.note ? `<span style="color: #00e5ff;">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>` : '');
+                ? `<span class="note-editable" data-note="${escapeHTML(item.note)}" onclick="updateKeyNote('${escapeHTML(item.key)}', 'user', this)" style="color: #3b82f6; cursor: pointer; border-bottom: 1px dashed rgba(59,130,246,0.4); padding-bottom: 1px;" title="ចុចដើម្បីកែប្រែ">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>`
+                : `<span class="note-editable" data-note="" onclick="updateKeyNote('${escapeHTML(item.key)}', 'user', this)" style="color: var(--text-muted); opacity: 0.6; cursor: pointer; font-style: italic;">+ បន្ថែមឈ្មោះ</span>`)
+            : (item.note ? `<span style="color: #3b82f6;">• ម្ចាស់៖ ${escapeHTML(item.note)}</span>` : '');
         
         // Admin or Moderator can reset user keys
         const canReset = currentUserRole === 'admin' || currentUserRole === 'moderator';
@@ -1512,10 +1546,10 @@ async function loadKeysData() {
           limitWidgetHtml = '';
         } else {
           limitWidgetHtml = `
-            <div style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: var(--text-muted);">
+            <div style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #64748b;">
               <span>ឧបករណ៍៖ ${deviceCount} / </span>
-              <input type="number" class="key-limit-input" value="${item.max_devices}" min="1" style="width: 45px; height: 20px; background: rgba(11,7,22,0.6); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: center; border-radius: 4px; padding: 0; font-size: 0.72rem;">
-              <button class="btn btn-secondary btn-sm" onclick="updateKeyLimit('${escapeHTML(item.key)}', 'user', this)" style="padding: 2px 6px; font-size: 0.65rem; border-color: rgba(0,229,255,0.3); color: #00e5ff; height: 20px; display: inline-flex; align-items: center; justify-content: center;" title="Update Limit">
+              <input type="number" class="key-limit-input" value="${item.max_devices}" min="1" style="width: 45px; height: 20px; background: #eef4ff; border: 1px solid rgba(0,0,0,0.12); color: #1e293b; text-align: center; border-radius: 4px; padding: 0; font-size: 0.72rem;">
+              <button class="btn btn-secondary btn-sm" onclick="updateKeyLimit('${escapeHTML(item.key)}', 'user', this)" style="padding: 2px 6px; font-size: 0.65rem; border-color: rgba(59,130,246,0.3); color: #3b82f6; height: 20px; display: inline-flex; align-items: center; justify-content: center;" title="Update Limit">
                 <i class="fa-solid fa-check"></i>
               </button>
             </div>
@@ -1523,8 +1557,24 @@ async function loadKeysData() {
         }
         
         const keyHtml = (!isMasked && (currentUserRole === 'admin' || currentUserRole === 'moderator'))
-          ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'user', this)" style="font-family: monospace; font-size: 0.95rem; color: #fff; cursor: pointer; border-bottom: 1px dashed rgba(255,255,255,0.25); padding-bottom: 1px;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
-          : `<span style="font-family: monospace; font-size: 0.95rem; color: #fff;">${escapeHTML(item.key)}</span>`;
+          ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'user', this)" style="font-family: monospace; font-size: 0.95rem; color: #1e293b; cursor: pointer; border-bottom: 1px dashed rgba(0,0,0,0.25); padding-bottom: 1px;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
+          : `<span style="font-family: monospace; font-size: 0.95rem; color: #1e293b;">${escapeHTML(item.key)}</span>`;
+
+        // Date formatting helper
+        let dateStr = '';
+        if (item.created_at) {
+          try {
+            const d = new Date(item.created_at);
+            if (!isNaN(d.getTime())) {
+              const day = String(d.getDate()).padStart(2, '0');
+              const month = String(d.getMonth() + 1).padStart(2, '0');
+              const year = String(d.getFullYear()).slice(-2);
+              const hours = String(d.getHours()).padStart(2, '0');
+              const minutes = String(d.getMinutes()).padStart(2, '0');
+              dateStr = `${day}/${month}/${year} ${hours}:${minutes}`;
+            }
+          } catch (err) {}
+        }
 
         li.innerHTML = `
           <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -1532,6 +1582,7 @@ async function loadKeysData() {
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               ${limitWidgetHtml}
               ${noteHtml}
+              ${dateStr ? `<span style="font-size: 0.72rem; color: #64748b;">• បង្កើត៖ ${dateStr}</span>` : ''}
             </div>
           </div>
           <div style="display: flex; align-items: center; gap: 5px;">

@@ -647,10 +647,11 @@ def get_auth_keys():
     # Placing placeholders based on driver type
     placeholders = ','.join(['%s' if is_pg else '?'] * len(roles_to_show))
     query = f"""
-        SELECT k.id, k.key, k.role, k.max_devices, k.note, d.device_id
+        SELECT k.id, k.key, k.role, k.max_devices, k.note, k.created_at, d.device_id
         FROM keys k
         LEFT JOIN devices d ON k.id = d.key_id
         WHERE k.role IN ({placeholders})
+        ORDER BY k.created_at DESC, k.id DESC
     """
     rows = execute_query(query, tuple(roles_to_show), fetch_all=True)
 
@@ -666,6 +667,7 @@ def get_auth_keys():
                 'role':        row_dict['role'],
                 'max_devices': row_dict['max_devices'],
                 'note':        row_dict['note'] or '',
+                'created_at':  row_dict['created_at'] or '',
                 'devices':     []
             }
         if row_dict['device_id']:
