@@ -1456,8 +1456,8 @@ async function loadKeysData() {
             : `<span class="note-editable" data-note="" onclick="updateKeyNote('${escapeHTML(item.key)}', 'admin', this)" style="color: var(--text-muted); opacity: 0.6; cursor: pointer; font-style: italic;" title="ចុចដើម្បីបន្ថែមឈ្មោះ">+ បន្ថែមឈ្មោះ</span>`;
           
           const keyHtml = currentUserRole === 'admin'
-            ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'admin', this)" style="font-family: monospace; font-size: 0.95rem; color: #1e293b; cursor: pointer; border-bottom: 1px dashed rgba(0,0,0,0.25); padding-bottom: 1px;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
-            : `<span style="font-family: monospace; font-size: 0.95rem; color: #1e293b;">${escapeHTML(item.key)}</span>`;
+            ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'admin', this)" style="font-family: monospace; font-size: 0.95rem; color: #1e293b; cursor: pointer; border-bottom: 1px dashed rgba(0,0,0,0.25); padding-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; display: inline-block;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
+            : `<span style="font-family: monospace; font-size: 0.95rem; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; display: inline-block;">${escapeHTML(item.key)}</span>`;
 
           // Date formatting helper
           let dateStr = '';
@@ -1482,14 +1482,9 @@ async function loadKeysData() {
           `;
 
           li.innerHTML = `
-            <!-- Row 1: Key + Note (Left) and Actions (Right) -->
+            <!-- Row 1: Key (Left) and Actions (Right) -->
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; min-width: 0;">
-              <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
-                ${keyHtml}
-                <span style="font-size: 0.72rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px;">
-                  ${noteHtml}
-                </span>
-              </div>
+              ${keyHtml}
               <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
                 <button class="btn btn-secondary btn-sm" onclick="copyTextToClipboard('${escapeHTML(item.key)}')" style="padding: 0; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; border-color: rgba(0,0,0,0.12); background: #fff;" title="Copy Key">
                   <i class="fa-solid fa-copy"></i>
@@ -1500,16 +1495,25 @@ async function loadKeysData() {
                 ${deleteButton}
               </div>
             </div>
-            <!-- Row 2: Limit configuration (Left) and Date (Right) -->
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 6px; border-top: 1px dashed rgba(0,0,0,0.04); padding-top: 5px;">
-              <div style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #64748b;">
-                <span>ឧបករណ៍៖ ${deviceCount} / </span>
-                <input type="number" class="key-limit-input" value="${item.max_devices}" min="1" style="width: 35px; height: 18px; background: #eef4ff; border: 1px solid rgba(0,0,0,0.12); color: #1e293b; text-align: center; border-radius: 4px; padding: 0; font-size: 0.72rem; margin: 0;">
-                <button class="btn btn-secondary btn-sm" onclick="updateKeyLimit('${escapeHTML(item.key)}', 'admin', this)" style="padding: 0; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; border-color: rgba(59,130,246,0.3); color: #3b82f6;" title="Update Limit">
-                  <i class="fa-solid fa-check"></i>
-                </button>
+            <!-- Row 2: Note (Left) and Date (Right) -->
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 6px; border-top: 1px dashed rgba(0,0,0,0.04); padding-top: 5px; font-size: 0.72rem; color: #64748b;">
+              <div style="min-width: 0; flex: 1; display: flex; align-items: center; gap: 4px;">
+                <i class="fa-regular fa-user" style="opacity: 0.7;"></i>
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;">
+                  ${noteHtml}
+                </span>
               </div>
-              <span style="font-size: 0.68rem; color: #94a3b8; font-family: monospace;">${dateStr ? dateStr.split(' ')[0] : ''}</span>
+              <span style="font-size: 0.68rem; color: #94a3b8; font-family: monospace; flex-shrink: 0; margin-left: 6px;">
+                ${dateStr ? dateStr.split(' ')[0] : ''}
+              </span>
+            </div>
+            <!-- Row 3: Limit configuration -->
+            <div style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #64748b; margin-top: 4px;">
+              <span>ឧបករណ៍៖ ${deviceCount} / </span>
+              <input type="number" class="key-limit-input" value="${item.max_devices}" min="1" style="width: 35px; height: 18px; background: #eef4ff; border: 1px solid rgba(0,0,0,0.12); color: #1e293b; text-align: center; border-radius: 4px; padding: 0; font-size: 0.72rem; margin: 0;">
+              <button class="btn btn-secondary btn-sm" onclick="updateKeyLimit('${escapeHTML(item.key)}', 'admin', this)" style="padding: 0; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; border-color: rgba(59,130,246,0.3); color: #3b82f6;" title="Update Limit">
+                <i class="fa-solid fa-check"></i>
+              </button>
             </div>
           `;
           adminList.appendChild(li);
@@ -1546,8 +1550,8 @@ async function loadKeysData() {
           const canDeleteMod = currentUserRole === 'admin';
           
           const keyHtml = currentUserRole === 'admin'
-            ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'moderator', this)" style="font-family: monospace; font-size: 0.95rem; color: #1e293b; cursor: pointer; border-bottom: 1px dashed rgba(0,0,0,0.25); padding-bottom: 1px;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
-            : `<span style="font-family: monospace; font-size: 0.95rem; color: #1e293b;">${escapeHTML(item.key)}</span>`;
+            ? `<span class="key-editable" data-key="${escapeHTML(item.key)}" onclick="updateKeyValue('${escapeHTML(item.key)}', 'moderator', this)" style="font-family: monospace; font-size: 0.95rem; color: #1e293b; cursor: pointer; border-bottom: 1px dashed rgba(0,0,0,0.25); padding-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; display: inline-block;" title="ចុចដើម្បីប្តូរលេខសម្ងាត់">${escapeHTML(item.key)}</span>`
+            : `<span style="font-family: monospace; font-size: 0.95rem; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; display: inline-block;">${escapeHTML(item.key)}</span>`;
 
           // Date formatting helper
           let dateStr = '';
@@ -1572,14 +1576,9 @@ async function loadKeysData() {
           ` : '';
 
           li.innerHTML = `
-            <!-- Row 1: Key + Note (Left) and Actions (Right) -->
+            <!-- Row 1: Key (Left) and Actions (Right) -->
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; min-width: 0;">
-              <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
-                ${keyHtml}
-                <span style="font-size: 0.72rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px;">
-                  ${noteHtml}
-                </span>
-              </div>
+              ${keyHtml}
               <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
                 <button class="btn btn-secondary btn-sm" onclick="copyTextToClipboard('${escapeHTML(item.key)}')" style="padding: 0; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; border-color: rgba(0,0,0,0.12); background: #fff;" title="Copy Key">
                   <i class="fa-solid fa-copy"></i>
@@ -1590,16 +1589,25 @@ async function loadKeysData() {
                 ${deleteButton}
               </div>
             </div>
-            <!-- Row 2: Limit configuration (Left) and Date (Right) -->
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 6px; border-top: 1px dashed rgba(0,0,0,0.04); padding-top: 5px;">
-              <div style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #64748b;">
-                <span>ឧបករណ៍៖ ${deviceCount} / </span>
-                <input type="number" class="key-limit-input" value="${item.max_devices}" min="1" style="width: 35px; height: 18px; background: #eef4ff; border: 1px solid rgba(0,0,0,0.12); color: #1e293b; text-align: center; border-radius: 4px; padding: 0; font-size: 0.72rem; margin: 0;">
-                <button class="btn btn-secondary btn-sm" onclick="updateKeyLimit('${escapeHTML(item.key)}', 'moderator', this)" style="padding: 0; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; border-color: rgba(59,130,246,0.3); color: #3b82f6;" title="Update Limit">
-                  <i class="fa-solid fa-check"></i>
-                </button>
+            <!-- Row 2: Note (Left) and Date (Right) -->
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 6px; border-top: 1px dashed rgba(0,0,0,0.04); padding-top: 5px; font-size: 0.72rem; color: #64748b;">
+              <div style="min-width: 0; flex: 1; display: flex; align-items: center; gap: 4px;">
+                <i class="fa-regular fa-user" style="opacity: 0.7;"></i>
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;">
+                  ${noteHtml}
+                </span>
               </div>
-              <span style="font-size: 0.68rem; color: #94a3b8; font-family: monospace;">${dateStr ? dateStr.split(' ')[0] : ''}</span>
+              <span style="font-size: 0.68rem; color: #94a3b8; font-family: monospace; flex-shrink: 0; margin-left: 6px;">
+                ${dateStr ? dateStr.split(' ')[0] : ''}
+              </span>
+            </div>
+            <!-- Row 3: Limit configuration -->
+            <div style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #64748b; margin-top: 4px;">
+              <span>ឧបករណ៍៖ ${deviceCount} / </span>
+              <input type="number" class="key-limit-input" value="${item.max_devices}" min="1" style="width: 35px; height: 18px; background: #eef4ff; border: 1px solid rgba(0,0,0,0.12); color: #1e293b; text-align: center; border-radius: 4px; padding: 0; font-size: 0.72rem; margin: 0;">
+              <button class="btn btn-secondary btn-sm" onclick="updateKeyLimit('${escapeHTML(item.key)}', 'moderator', this)" style="padding: 0; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; border-color: rgba(59,130,246,0.3); color: #3b82f6;" title="Update Limit">
+                <i class="fa-solid fa-check"></i>
+              </button>
             </div>
           `;
           modList.appendChild(li);
