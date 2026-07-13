@@ -179,6 +179,20 @@ function setupEventListeners() {
   document.getElementById('btn-close-guide').addEventListener('click', () => {
     document.getElementById('guide-overlay').style.display = 'none';
   });
+
+  // iOS Download Modal Actions
+  const btnCloseIosModal = document.getElementById('btn-close-ios-modal');
+  const iosModal = document.getElementById('ios-download-modal');
+  if (btnCloseIosModal && iosModal) {
+    btnCloseIosModal.addEventListener('click', () => {
+      iosModal.classList.remove('active');
+    });
+    iosModal.addEventListener('click', (e) => {
+      if (e.target === iosModal) {
+        iosModal.classList.remove('active');
+      }
+    });
+  }
 }
 
 // Step 1: Submit user details to Server
@@ -266,18 +280,23 @@ async function startCameraFlow() {
   document.getElementById('camera-section').classList.remove('hidden');
   
   try {
-    // Request front camera if available, fallback to default camera
-    const constraints = {
-      video: {
-        facingMode: 'user',
-        width: { ideal: 1080 },
-        height: { ideal: 1080 },
-        aspectRatio: 1
-      },
-      audio: false
-    };
+    let stream;
+    try {
+      // First try front-facing user camera with basic constraints
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: false
+      });
+    } catch (e) {
+      console.warn("Front camera constraints failed, trying generic camera constraints:", e);
+      // Fallback: request any available camera feed
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false
+      });
+    }
     
-    videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+    videoStream = stream;
     const video = document.getElementById('video-stream');
     video.srcObject = videoStream;
     video.play();
@@ -495,11 +514,30 @@ function compileFramedPhoto() {
 }
 
 // Download final merged canvas photo
+// Download final merged canvas photo
 function downloadFramedPhoto() {
   const canvas = document.getElementById('result-canvas');
+  if (!canvas) return;
   const scannerName = document.getElementById('scanner-name').value.trim() || 'photo';
   const safeName = scannerName.replace(/[\/\\?%*:|"<>\s]/g, '_') + '.jpg';
   
+  // Detect if running on iOS (iPhone, iPad, iPod)
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  
+  if (isIOS) {
+    // For iOS, display the image in the long-press modal
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+    const iosModal = document.getElementById('ios-download-modal');
+    const iosImg = document.getElementById('ios-download-image');
+    
+    if (iosModal && iosImg) {
+      iosImg.src = dataUrl;
+      iosModal.classList.add('active');
+    }
+    return;
+  }
+  
+  // For non-iOS (Android, Windows, Mac), trigger normal file download
   canvas.toBlob((blob) => {
     if (!blob) {
       showToast('មានបញ្ហាក្នុងការបង្កើតរូបភាព!', 'error');

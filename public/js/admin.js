@@ -685,13 +685,13 @@ function renderScanLogs() {
       <td class="time-stamp" style="vertical-align: middle;">${dateFormatted}</td>
       <td style="vertical-align: middle;"><span class="badge-id">${escapeHTML(log.qr_id)}</span></td>
       <td style="font-weight: 700; vertical-align: middle;">${escapeHTML(log.qr_name)}</td>
-      <td style="color: #fff; font-weight: 600; vertical-align: middle;">${escapeHTML(log.name)}</td>
-      <td style="vertical-align: middle;"><a href="tel:${log.phone}" style="color: #00e5ff; text-decoration: none;"><i class="fa-solid fa-phone"></i> ${escapeHTML(log.phone)}</a></td>
+      <td style="font-weight: 600; vertical-align: middle;">${escapeHTML(log.name)}</td>
+      <td style="vertical-align: middle;"><a href="tel:${log.phone}" style="color: #3b82f6; text-decoration: none; font-weight: 600;"><i class="fa-solid fa-phone"></i> ${escapeHTML(log.phone)}</a></td>
       <td style="vertical-align: middle;">
         <i class="fa-solid fa-location-dot" style="color: #ff3366;"></i> ${escapeHTML(log.location)}
         ${(log.latitude && log.longitude) ? `
-          <a href="https://www.google.com/maps/search/?api=1&query=${log.latitude},${log.longitude}" target="_blank" class="btn btn-secondary btn-sm" style="padding: 4px 8px; margin-left: 8px; font-size: 0.75rem; border-radius: 6px; box-shadow: 0 0 10px rgba(0, 242, 254, 0.15); border-color: rgba(0, 242, 254, 0.3);" title="មើលលើ Google Maps">
-            <i class="fa-solid fa-map-location-dot" style="color: #00e5ff; margin-right: 0;"></i> Map
+          <a href="https://www.google.com/maps/search/?api=1&query=${log.latitude},${log.longitude}" target="_blank" class="btn btn-secondary btn-sm" style="padding: 4px 8px; margin-left: 8px; font-size: 0.75rem; border-radius: 6px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.05); border-color: rgba(0,0,0,0.12);" title="មើលលើ Google Maps">
+            <i class="fa-solid fa-map-location-dot" style="color: #3b82f6; margin-right: 0;"></i> Map
           </a>
         ` : ''}
       </td>
