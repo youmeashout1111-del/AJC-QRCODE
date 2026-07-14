@@ -364,6 +364,33 @@ def index():
 def ping():
     return jsonify({'status': 'ok', 'time': datetime.now().isoformat()})
 
+# Utility download helper for devices that block client-side downloads (e.g. iOS/Safari)
+@app.route('/api/utils/download-attachment', methods=['POST'])
+def download_attachment():
+    image_data = request.form.get('image_data', '')
+    filename = request.form.get('filename', 'download.png')
+    mimetype = request.form.get('mimetype', 'image/png')
+    
+    if not image_data:
+        return "Missing data", 400
+        
+    import base64
+    from io import BytesIO
+    from flask import send_file
+    
+    if ',' in image_data:
+        header, b64_str = image_data.split(',', 1)
+        file_bytes = base64.b64decode(b64_str)
+    else:
+        file_bytes = image_data.encode('utf-8')
+        
+    return send_file(
+        BytesIO(file_bytes),
+        mimetype=mimetype,
+        as_attachment=True,
+        download_name=filename
+    )
+
 # ── QR Codes ──────────────────────────────────────────────────────────────────
 
 @app.route('/api/qrcodes', methods=['GET'])

@@ -899,6 +899,36 @@ function drawQRWithText(qrId, qrName, defaultLocation, expiresAt, scanUrl, callb
   });
 }
 
+// Trigger dynamic download via backend form post (fully compatible with iOS Safari / iPhone)
+function triggerSecureDownload(dataUrl, filename, mimetype = 'image/png') {
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/api/utils/download-attachment';
+  form.style.display = 'none';
+
+  const inputData = document.createElement('input');
+  inputData.type = 'hidden';
+  inputData.name = 'image_data';
+  inputData.value = dataUrl;
+  form.appendChild(inputData);
+
+  const inputFilename = document.createElement('input');
+  inputFilename.type = 'hidden';
+  inputFilename.name = 'filename';
+  inputFilename.value = filename;
+  form.appendChild(inputFilename);
+
+  const inputMime = document.createElement('input');
+  inputMime.type = 'hidden';
+  inputMime.name = 'mimetype';
+  inputMime.value = mimetype;
+  form.appendChild(inputMime);
+
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+}
+
 // Download Single QR Code (PNG or SVG)
 function downloadSingleQR(qrId, qrName, format) {
   const scanUrl = getScanUrl(qrId);
@@ -913,10 +943,7 @@ function downloadSingleQR(qrId, qrName, format) {
         return;
       }
       const dataUrl = finalCanvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = `${qrName.replace(/\s+/g, '_')}_${qrId}.png`;
-      link.href = dataUrl;
-      link.click();
+      triggerSecureDownload(dataUrl, `${qrName.replace(/\s+/g, '_')}_${qrId}.png`, 'image/png');
     });
   } else if (format === 'svg') {
     QRCode.toString(scanUrl, {
@@ -962,8 +989,7 @@ function downloadSingleQR(qrId, qrName, format) {
         </svg>
       `;
       
-      const blob = new Blob([finalSvg], { type: 'image/svg+xml' });
-      saveAs(blob, `${qrName.replace(/\s+/g, '_')}_${qrId}.svg`);
+      triggerSecureDownload(finalSvg, `${qrName.replace(/\s+/g, '_')}_${qrId}.svg`, 'image/svg+xml');
     });
   }
 }
