@@ -604,11 +604,47 @@ function downloadFramedPhoto() {
   const scannerName = document.getElementById('scanner-name').value.trim() || 'photo';
   const safeName = scannerName.replace(/[\/\\?%*:|"<>\s]/g, '_') + '.jpg';
   
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-  triggerSecureDownload(dataUrl, safeName, 'image/jpeg');
-  
-  // Show success popup briefly (centered)
-  showCenteredAlert('ទាញយករូបភាពបានជោគជ័យ!<br>Download Success');
+  // Try Web Share API first (highly interactive and allows direct saving to Photos Gallery on iPhone)
+  if (navigator.share && navigator.canShare) {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        // Fallback if blob creation fails
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+        triggerSecureDownload(dataUrl, safeName, 'image/jpeg');
+        showCenteredAlert('ទាញយករូបភាពបានជោគជ័យ!<br>Download Success');
+        return;
+      }
+      
+      const file = new File([blob], safeName, { type: 'image/jpeg' });
+      if (navigator.canShare({ files: [file] })) {
+        navigator.share({
+          files: [file],
+          title: 'រូបថតរបស់ខ្ញុំ',
+          text: 'រូបថត Ajinomoto'
+        })
+        .then(() => {
+          showCenteredAlert('រក្សាទុកបានជោគជ័យ!<br>Save Success');
+        })
+        .catch((err) => {
+          // If user cancels or share fails, fallback to attachment download
+          console.warn('Share cancelled/failed, using fallback download:', err.message);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+          triggerSecureDownload(dataUrl, safeName, 'image/jpeg');
+          showCenteredAlert('ទាញយករូបភាពបានជោគជ័យ!<br>Download Success');
+        });
+      } else {
+        // Fallback if sharing files is not supported
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+        triggerSecureDownload(dataUrl, safeName, 'image/jpeg');
+        showCenteredAlert('ទាញយករូបភាពបានជោគជ័យ!<br>Download Success');
+      }
+    }, 'image/jpeg', 0.95);
+  } else {
+    // Fallback for browsers that don't support Web Share API (desktop, older devices)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+    triggerSecureDownload(dataUrl, safeName, 'image/jpeg');
+    showCenteredAlert('ទាញយករូបភាពបានជោគជ័យ!<br>Download Success');
+  }
 }
 
 // Show a beautiful centered alert popup that disappears after 1.5s automatically
