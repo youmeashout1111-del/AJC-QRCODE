@@ -274,8 +274,8 @@ async function handleStep1Submit(e) {
   }
 }
 
-// Track current facing mode (start with back camera)
-let currentFacingMode = 'environment';
+// Track current facing mode (start with front camera)
+let currentFacingMode = 'user';
 
 // Start camera with specified facing mode
 async function startCameraWithFacing(facingMode) {
@@ -331,8 +331,8 @@ async function startCameraFlow() {
   document.getElementById('photo-source-selector').classList.add('hidden');
   document.getElementById('camera-section').classList.remove('hidden');
 
-  // Always start with back camera (environment)
-  currentFacingMode = 'environment';
+  // Always start with front camera (user)
+  currentFacingMode = 'user';
   const ok = await startCameraWithFacing(currentFacingMode);
   if (!ok) {
     stopCameraFlow();
@@ -567,7 +567,36 @@ function compileFramedPhoto() {
   userImg.src = capturedImageSrc;
 }
 
-// Download final merged canvas photo
+// Trigger dynamic download via backend form post (fully compatible with iOS Safari / iPhone)
+function triggerSecureDownload(dataUrl, filename, mimetype = 'image/jpeg') {
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/api/utils/download-attachment';
+  form.style.display = 'none';
+
+  const inputData = document.createElement('input');
+  inputData.type = 'hidden';
+  inputData.name = 'image_data';
+  inputData.value = dataUrl;
+  form.appendChild(inputData);
+
+  const inputFilename = document.createElement('input');
+  inputFilename.type = 'hidden';
+  inputFilename.name = 'filename';
+  inputFilename.value = filename;
+  form.appendChild(inputFilename);
+
+  const inputMime = document.createElement('input');
+  inputMime.type = 'hidden';
+  inputMime.name = 'mimetype';
+  inputMime.value = mimetype;
+  form.appendChild(inputMime);
+
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+}
+
 // Download final merged canvas photo
 function downloadFramedPhoto() {
   const canvas = document.getElementById('result-canvas');
@@ -575,44 +604,11 @@ function downloadFramedPhoto() {
   const scannerName = document.getElementById('scanner-name').value.trim() || 'photo';
   const safeName = scannerName.replace(/[\/\\?%*:|"<>\s]/g, '_') + '.jpg';
   
-  // Detect if running on iOS (iPhone, iPad, iPod)
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+  triggerSecureDownload(dataUrl, safeName, 'image/jpeg');
   
-  if (isIOS) {
-    // For iOS, display the image in the long-press modal
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-    const iosModal = document.getElementById('ios-download-modal');
-    const iosImg = document.getElementById('ios-download-image');
-    
-    if (iosModal && iosImg) {
-      iosImg.src = dataUrl;
-      iosModal.classList.add('active');
-    }
-    return;
-  }
-  
-  // For non-iOS (Android, Windows, Mac), trigger normal file download
-  canvas.toBlob((blob) => {
-    if (!blob) {
-      showToast('មានបញ្ហាក្នុងការបង្កើតរូបភាព!', 'error');
-      return;
-    }
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.download = safeName;
-    link.href = url;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Revoke the object URL after download is triggered
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 100);
-    
-    // Show success popup briefly (centered)
-    showCenteredAlert('ទាញយករូបភាពបានជោគជ័យ!<br>Download Success');
-  }, 'image/jpeg', 0.95);
+  // Show success popup briefly (centered)
+  showCenteredAlert('ទាញយករូបភាពបានជោគជ័យ!<br>Download Success');
 }
 
 // Show a beautiful centered alert popup that disappears after 1.5s automatically
