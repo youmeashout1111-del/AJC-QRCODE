@@ -739,7 +739,7 @@ function renderQRCodes() {
   });
 
   const filterSales = document.getElementById('filter-sales-team');
-  const uniqueSales = [...new Set(qrCodes.map(qr => qr.id).filter(Boolean))].sort();
+  const uniqueSales = [...new Set(qrCodes.map(qr => qr.id.replace(/-copy(-\d+)?$/, '')).filter(Boolean))].sort();
   uniqueSales.forEach(sales => {
     const opt = document.createElement('option');
     opt.value = sales;
@@ -793,7 +793,7 @@ function renderQRCodes() {
       </td>
       <td style="vertical-align:middle;padding:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
           title="${escapeHTML(qr.id)}">
-        <span class="badge-id" style="font-size:0.78rem;">${escapeHTML(qr.id)}</span>
+        <span class="badge-id" style="font-size:0.78rem;">${escapeHTML(qr.id.replace(/-copy(-\d+)?$/, ''))}</span>
       </td>
       <td style="vertical-align:middle;padding:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
           title="${hashLabel}">
@@ -890,7 +890,7 @@ function renderScanLogs() {
         `}
       </td>
       <td class="time-stamp" style="vertical-align: middle;">${dateFormatted}</td>
-      <td style="vertical-align: middle;"><span class="badge-id">${escapeHTML(log.qr_id)}</span></td>
+      <td style="vertical-align: middle;"><span class="badge-id">${escapeHTML(log.qr_id.replace(/-copy(-\d+)?$/, ''))}</span></td>
       <td style="font-weight: 700; vertical-align: middle;">${escapeHTML(log.qr_name)}</td>
       <td style="font-weight: 600; vertical-align: middle;">${escapeHTML(log.name)}</td>
       <td style="vertical-align: middle;"><a href="tel:${log.phone}" style="color: #3b82f6; text-decoration: none; font-weight: 600;"><i class="fa-solid fa-phone"></i> ${escapeHTML(log.phone)}</a></td>
@@ -1229,8 +1229,12 @@ function downloadSingleQR(qrId, qrName, format) {
         showToast('មានបញ្ហាក្នុងការទាញយក!', 'error');
         return;
       }
+      const cleanId = qrId.replace(/-copy(-\d+)?$/, '');
+      const cleanDepot = qrName.replace(/\s+/g, '_');
+      const cleanMarket = defaultLocation ? defaultLocation.replace(/\s+/g, '_') : '';
+      const finalFilename = cleanMarket ? `${cleanDepot}_${cleanId}_${cleanMarket}.png` : `${cleanDepot}_${cleanId}.png`;
       const dataUrl = finalCanvas.toDataURL('image/png');
-      triggerSecureDownload(dataUrl, `${qrName.replace(/\s+/g, '_')}_${qrId}.png`, 'image/png');
+      triggerSecureDownload(dataUrl, finalFilename, 'image/png');
     });
   } else if (format === 'svg') {
     QRCode.toString(scanUrl, {
@@ -1288,7 +1292,11 @@ function downloadSingleQR(qrId, qrName, format) {
         </svg>
       `;
       
-      triggerSecureDownload(finalSvg, `${qrName.replace(/\s+/g, '_')}_${qrId}.svg`, 'image/svg+xml');
+      const cleanId = qrId.replace(/-copy(-\d+)?$/, '');
+      const cleanDepot = qrName.replace(/\s+/g, '_');
+      const cleanMarket = defaultLocation ? defaultLocation.replace(/\s+/g, '_') : '';
+      const finalFilename = cleanMarket ? `${cleanDepot}_${cleanId}_${cleanMarket}.svg` : `${cleanDepot}_${cleanId}.svg`;
+      triggerSecureDownload(finalSvg, finalFilename, 'image/svg+xml');
     });
   }
 }
@@ -1325,7 +1333,10 @@ async function handleBatchDownload() {
         
         finalCanvas.toBlob((blob) => {
           if (blob) {
-            const fileName = `${qrName.replace(/\s+/g, '_')}_${qrId}.png`;
+            const cleanId = qrId.replace(/-copy(-\d+)?$/, '');
+            const cleanDepot = qrName.replace(/\s+/g, '_');
+            const cleanMarket = defaultLocation ? defaultLocation.replace(/\s+/g, '_') : '';
+            const fileName = cleanMarket ? `${cleanDepot}_${cleanId}_${cleanMarket}.png` : `${cleanDepot}_${cleanId}.png`;
             zip.file(fileName, blob);
           }
           resolve();
@@ -1408,7 +1419,7 @@ function applyFilters() {
     
     const matchesSearch = !query || searchString.includes(query);
     const matchesDepot  = !depotVal || qr.name === depotVal;
-    const matchesSales  = !salesVal || qr.id === salesVal;
+    const matchesSales  = !salesVal || qr.id.replace(/-copy(-\d+)?$/, '') === salesVal;
     const matchesLoc    = !locVal || qr.default_location === locVal;
     
     const row = document.getElementById(`qr-row-${qr.id}`);
@@ -1433,7 +1444,7 @@ function populateTeamFilterDropdown() {
   const currentSelection = select.value;
   select.innerHTML = '<option value="">-- ទាំងអស់ --</option>';
   
-  const uniqueTeams = [...new Set(scanLogs.map(log => log.qr_id).filter(Boolean))];
+  const uniqueTeams = [...new Set(scanLogs.map(log => log.qr_id.replace(/-copy(-\d+)?$/, '')).filter(Boolean))];
   uniqueTeams.sort().forEach(teamId => {
     const opt = document.createElement('option');
     opt.value = teamId;
@@ -1510,7 +1521,7 @@ function applyLogFilters() {
     // Check match for each filter
     const matchSearch = !query || text.includes(query);
     const matchDate = !dateVal || rowDate === dateVal;
-    const matchTeam = !teamVal || rowTeam === teamVal;
+    const matchTeam = !teamVal || rowTeam.replace(/-copy(-\d+)?$/, '') === teamVal;
     const matchDepot = !depotVal || rowDepot === depotVal;
     const matchMarket = !marketVal || rowMarket === marketVal;
     
