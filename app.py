@@ -181,7 +181,8 @@ def init_db():
             capture_location INTEGER DEFAULT 0,
             created_at       TEXT,
             expires_at       TEXT,
-            cannot_edit_market INTEGER DEFAULT 1
+            cannot_edit_market INTEGER DEFAULT 1,
+            start_date       TEXT
         );
         """,
         """
@@ -234,7 +235,8 @@ def init_db():
         ('qrcodes', 'created_at', 'TEXT'),
         ('qrcodes', 'expires_at', 'TEXT'),
         ('frames', 'created_at', 'TEXT'),
-        ('qrcodes', 'cannot_edit_market', 'INTEGER DEFAULT 1')
+        ('qrcodes', 'cannot_edit_market', 'INTEGER DEFAULT 1'),
+        ('qrcodes', 'start_date', 'TEXT')
     ]:
         try:
             execute_query(f"ALTER TABLE {tbl} ADD COLUMN {col_name} {col_t}", commit=True)
@@ -413,12 +415,12 @@ def get_qrcodes():
     result = []
     
     for row in rows:
-        q = dict(row)
         q['show_facebook']    = bool(q['show_facebook'])
         q['show_tiktok']      = bool(q['show_tiktok'])
         q['show_youtube']     = bool(q['show_youtube'])
         q['capture_location'] = bool(q['capture_location'])
         q['cannot_edit_market'] = bool(q.get('cannot_edit_market', 1))
+        q['start_date']       = q.get('start_date') or ''
         q['scan_count']       = int(q['scan_count'])
         result.append(q)
         
@@ -426,17 +428,16 @@ def get_qrcodes():
 
 @app.route('/api/qrcodes/public/<string:qr_id>', methods=['GET'])
 def get_public_qrcode(qr_id):
-    is_pg = bool(DATABASE_URL and HAS_PG)
     q_sel = """
         SELECT id, name, hashtag, facebook_url, tiktok_url, youtube_url,
                frame_image, frame_image_data, default_location,
-               show_facebook, show_tiktok, show_youtube, capture_location, expires_at, cannot_edit_market
+               show_facebook, show_tiktok, show_youtube, capture_location, expires_at, cannot_edit_market, start_date
         FROM qrcodes
         WHERE id = %s
     """ if is_pg else """
         SELECT id, name, hashtag, facebook_url, tiktok_url, youtube_url,
                frame_image, frame_image_data, default_location,
-               show_facebook, show_tiktok, show_youtube, capture_location, expires_at, cannot_edit_market
+               show_facebook, show_tiktok, show_youtube, capture_location, expires_at, cannot_edit_market, start_date
         FROM qrcodes
         WHERE id = ?
     """
@@ -450,6 +451,7 @@ def get_public_qrcode(qr_id):
     q['show_youtube']     = bool(q['show_youtube'])
     q['capture_location'] = bool(q['capture_location'])
     q['cannot_edit_market'] = bool(q.get('cannot_edit_market', 1))
+    q['start_date']       = q.get('start_date') or ''
     return jsonify(q)
 
 @app.route('/api/qrcodes', methods=['POST'])
@@ -471,6 +473,11 @@ def create_qrcode():
     show_youtube     = 1 if request.form.get('show_youtube')     == 'true' else 0
     capture_location = 1 if request.form.get('capture_location') == 'true' else 0
     cannot_edit_market = 1 if request.form.get('cannot_edit_market') == 'true' else 0
+    start_date       = request.form.get('start_date', '').strip()
+
+    now = get_ict_now()
+    if not start_date:
+        start_date = now.split('T')[0]
 
     expires_at       = request.form.get('expires_at', '').strip()
     if not expires_at:
@@ -501,25 +508,24 @@ def create_qrcode():
     q_clean = "DELETE FROM scans WHERE qr_id = %s" if is_pg else "DELETE FROM scans WHERE qr_id = ?"
     execute_query(q_clean, (qr_id,), commit=True)
 
-    now = get_ict_now()
     q_ins = """
         INSERT INTO qrcodes
             (id, name, hashtag, facebook_url, tiktok_url, youtube_url,
              frame_image, frame_image_data, default_location,
-             show_facebook, show_tiktok, show_youtube, capture_location, created_at, expires_at, cannot_edit_market)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+             show_facebook, show_tiktok, show_youtube, capture_location, created_at, expires_at, cannot_edit_market, start_date)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
     """ if is_pg else """
         INSERT INTO qrcodes
             (id, name, hashtag, facebook_url, tiktok_url, youtube_url,
              frame_image, frame_image_data, default_location,
-             show_facebook, show_tiktok, show_youtube, capture_location, created_at, expires_at, cannot_edit_market)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             show_facebook, show_tiktok, show_youtube, capture_location, created_at, expires_at, cannot_edit_market, start_date)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """
     
     execute_query(q_ins, (
         qr_id, name, hashtag, facebook_url, tiktok_url, youtube_url,
         frame_image, frame_image_data, default_location,
-        show_facebook, show_tiktok, show_youtube, capture_location, now, expires_at, cannot_edit_market
+        show_facebook, show_tiktok, show_youtube, capture_location, now, expires_at, cannot_edit_market, start_date
     ), commit=True)
 
     return jsonify({
@@ -530,6 +536,7 @@ def create_qrcode():
         'show_facebook': bool(show_facebook), 'show_tiktok': bool(show_tiktok),
         'show_youtube': bool(show_youtube), 'capture_location': bool(capture_location),
         'cannot_edit_market': bool(cannot_edit_market),
+        'start_date': start_date,
         'created_at': now, 'expires_at': expires_at, 'scan_count': 0
     }), 201
 
@@ -574,10 +581,14 @@ def update_qrcode(qr_id):
     expires_at = data.get('expires_at', '').strip()
     if not expires_at:
         expires_at = None
+        
+    start_date = data.get('start_date', '').strip()
+    if not start_date:
+        start_date = None
 
     is_pg = bool(DATABASE_URL and HAS_PG)
-    q_upd = "UPDATE qrcodes SET expires_at = %s WHERE id = %s" if is_pg else "UPDATE qrcodes SET expires_at = ? WHERE id = ?"
-    execute_query(q_upd, (expires_at, qr_id), commit=True)
+    q_upd = "UPDATE qrcodes SET expires_at = %s, start_date = %s WHERE id = %s" if is_pg else "UPDATE qrcodes SET expires_at = ?, start_date = ? WHERE id = ?"
+    execute_query(q_upd, (expires_at, start_date, qr_id), commit=True)
     return jsonify({'message': 'បានកែប្រែដោយជោគជ័យ!'})
 
 # Serve frame image from DB Base64
@@ -1007,16 +1018,19 @@ def record_scan():
         return jsonify({'error': 'មេត្តាបំពេញព័ត៌មានអោយបានគ្រប់គ្រាន់!'}), 400
 
     is_pg = bool(DATABASE_URL and HAS_PG)
-    q_chk = "SELECT name, expires_at FROM qrcodes WHERE id = %s" if is_pg else "SELECT name, expires_at FROM qrcodes WHERE id = ?"
+    q_chk = "SELECT name, expires_at, start_date FROM qrcodes WHERE id = %s" if is_pg else "SELECT name, expires_at, start_date FROM qrcodes WHERE id = ?"
     qr_row = execute_query(q_chk, (qr_id,), fetch_one=True)
 
     if qr_row:
         qr_name = qr_row['name']
         expires_at = qr_row['expires_at']
-        if expires_at:
-            ict_date = get_ict_now().split('T')[0]
-            if ict_date > expires_at:
-                return jsonify({'error': 'ហួសការកំណត់ហើយ សូមអរគុណ!'}), 400
+        start_date = qr_row.get('start_date')
+        ict_date = get_ict_now().split('T')[0]
+        
+        if start_date and ict_date < start_date:
+            return jsonify({'error': 'មិនទាន់ដល់ថ្ងៃកំណត់ប្រើប្រាស់ឡើយ!'}), 400
+        if expires_at and ict_date > expires_at:
+            return jsonify({'error': 'ហួសការកំណត់ហើយ សូមអរគុណ!'}), 400
     else:
         if qr_id != 'test_qr':
             return jsonify({'error': 'QR Code មិនត្រឹមត្រូវ ឬត្រូវបានលុបចោល!'}), 404

@@ -62,6 +62,15 @@ async function fetchQRConfig() {
       return;
     }
     
+    // Check if start date is in the future
+    if (qrConfig.start_date) {
+      const nowStr = new Date().toLocaleDateString('sv');
+      if (nowStr < qrConfig.start_date) {
+        showError('មិនទាន់ដល់ថ្ងៃកំណត់ប្រើប្រាស់ឡើយ! (ចាប់ផ្តើមពីថ្ងៃទី ' + qrConfig.start_date + ')');
+        return;
+      }
+    }
+    
     // Update shop name and subtitle
     document.getElementById('shop-name').textContent = qrConfig.name;
     document.getElementById('preview-hashtag').innerHTML = `<i class="fa-solid fa-hashtag"></i> ${qrConfig.hashtag || 'គ្មាន'}`;
@@ -141,9 +150,16 @@ async function fetchQRConfig() {
 }
 
 // Display error card if QR ID is invalid
-function showError() {
+function showError(msg) {
   document.getElementById('stepper-container').classList.add('hidden');
-  document.getElementById('error-card').classList.remove('hidden');
+  const errCard = document.getElementById('error-card');
+  if (errCard) {
+    if (msg) {
+      const p = errCard.querySelector('p');
+      if (p) p.textContent = msg;
+    }
+    errCard.classList.remove('hidden');
+  }
 }
 
 // Setup listeners for buttons

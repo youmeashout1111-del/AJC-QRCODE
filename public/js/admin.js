@@ -333,12 +333,18 @@ function setupEventListeners() {
     });
   }
 
+  // Set default start date picker value (today) on create form
+  const startInput = document.getElementById('qr-start-date');
+  if (startInput) {
+    startInput.value = new Date().toLocaleDateString('sv');
+  }
+
   // Set default expiration date picker value (1 year from today) on create form
   const expiresInput = document.getElementById('qr-expires-at');
   if (expiresInput) {
     const today = new Date();
     today.setFullYear(today.getFullYear() + 1);
-    expiresInput.value = today.toISOString().split('T')[0];
+    expiresInput.value = today.toLocaleDateString('sv');
   }
 
   // Edit QR Form Submission
@@ -348,6 +354,7 @@ function setupEventListeners() {
       e.preventDefault();
       const id = document.getElementById('edit-qr-id').value;
       const expiresAt = document.getElementById('edit-qr-expires-at').value;
+      const startDate = document.getElementById('edit-qr-start-date').value;
       const submitBtn = editQRForm.querySelector('button[type="submit"]');
       const origHtml = submitBtn.innerHTML;
       
@@ -362,7 +369,7 @@ function setupEventListeners() {
             'Authorization': getAuthKey(),
             'X-Device-ID': getDeviceID()
           },
-          body: JSON.stringify({ expires_at: expiresAt })
+          body: JSON.stringify({ expires_at: expiresAt, start_date: startDate })
         });
         
         const data = await res.json();
@@ -453,6 +460,7 @@ function setupEventListeners() {
               marketDatalist.appendChild(option);
             });
           }
+        }
       }
     });
   }
@@ -747,7 +755,7 @@ function renderQRCodes() {
           </button>
           <button type="button" class="btn btn-secondary btn-sm"
             style="padding:5px 8px;font-size:0.75rem;min-width:28px;height:28px;border-color:rgba(0,0,0,0.12);background:#fff;"
-            onclick="openEditQRModal('${qr.id}', '${escapeHTML(qr.name)}', '${qr.expires_at || ''}')"
+            onclick="openEditQRModal('${qr.id}', '${escapeHTML(qr.name)}', '${qr.expires_at || ''}', '${qr.start_date || ''}')"
             title="កែប្រែថ្ងៃហួសកំណត់">
             <i class="fa-solid fa-pen-to-square" style="color:#ffb703;"></i>
           </button>
@@ -2550,7 +2558,7 @@ async function updateKeyValue(keyVal, roleVal, spanEl) {
 }
 
 // Edit QR Expiration modal handlers
-window.openEditQRModal = function(id, name, expiresAt) {
+window.openEditQRModal = function(id, name, expiresAt, startDate) {
   const modal = document.getElementById('edit-qr-modal');
   if (!modal) return;
   
@@ -2558,6 +2566,7 @@ window.openEditQRModal = function(id, name, expiresAt) {
   document.getElementById('edit-qr-id-display').value = id;
   document.getElementById('edit-qr-name-display').value = name;
   document.getElementById('edit-qr-expires-at').value = expiresAt ? expiresAt.substring(0, 10) : '';
+  document.getElementById('edit-qr-start-date').value = startDate ? startDate.substring(0, 10) : '';
   
   modal.classList.remove('hidden');
 };
@@ -2684,6 +2693,12 @@ function duplicateQR(id) {
     document.getElementById('qr-expires-at').value = qr.expires_at.substring(0, 10);
   } else {
     document.getElementById('qr-expires-at').value = '';
+  }
+
+  if (qr.start_date) {
+    document.getElementById('qr-start-date').value = qr.start_date.substring(0, 10);
+  } else {
+    document.getElementById('qr-start-date').value = new Date().toLocaleDateString('sv');
   }
 
   document.getElementById('fb-url').value = qr.facebook_url || 'https://www.facebook.com';
