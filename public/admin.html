@@ -561,40 +561,41 @@
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
   ">
-    <div class="glass-panel" style="width: 420px; max-width: 90%; background: #ffffff; padding: 25px; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.18); border-color: rgba(220, 20, 30, 0.15);">
+    <div class="glass-panel" style="width: 480px; max-width: 95%; background: #ffffff; padding: 25px; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.18); border-color: rgba(220, 20, 30, 0.15); max-height: 90vh; overflow-y: auto;">
       <h3 style="margin-bottom: 20px; display: flex; align-items: center; gap: 8px; color: #ff3344; font-size: 1.15rem; font-weight: 700;">
-        <i class="fa-solid fa-pen-to-square"></i> កែប្រែកាលបរិច្ឆេទហួសកំណត់
+        <i class="fa-solid fa-pen-to-square"></i> កែប្រែព័ត៌មាន QR Code
       </h3>
       <form id="edit-qr-form">
         <input type="hidden" id="edit-qr-id" name="id">
         
-        <div class="form-group" style="margin-bottom: 18px;">
-          <label style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">Sales Team / ID</label>
-          <input type="text" id="edit-qr-id-display" disabled style="
-            background: #f1f5f9;
-            color: #64748b;
-            cursor: not-allowed;
-            border: 1px solid rgba(0,0,0,0.12);
+        <!-- Sales Team / ID -->
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="edit-qr-id-val" style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">Sales Team / ID *</label>
+          <input type="text" id="edit-qr-id-val" name="new_id" required style="
+            border: 1px solid rgba(0,0,0,0.15);
             height: 42px;
             margin-bottom: 0;
-          ">
+            background: #ffffff;
+            color: #1e293b;
+          " autocomplete="off">
         </div>
 
-        <div class="form-group" style="margin-bottom: 18px;">
-          <label style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">Depot Name</label>
-          <input type="text" id="edit-qr-name-display" disabled style="
-            background: #f1f5f9;
-            color: #64748b;
-            cursor: not-allowed;
-            border: 1px solid rgba(0,0,0,0.12);
+        <!-- Depot Name -->
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="edit-qr-name-val" style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">Depot *</label>
+          <input type="text" id="edit-qr-name-val" name="name" required style="
+            border: 1px solid rgba(0,0,0,0.15);
             height: 42px;
             margin-bottom: 0;
-          ">
+            background: #ffffff;
+            color: #1e293b;
+          " autocomplete="off">
         </div>
 
-        <div class="form-group" style="margin-bottom: 18px;">
-          <label for="edit-qr-start-date" style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">ថ្ងៃខែចាប់ផ្តើម (Start Date) *</label>
-          <input type="date" id="edit-qr-start-date" name="start_date" required style="
+        <!-- Hashtags -->
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="edit-qr-hashtag" style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">Text Hashtags</label>
+          <input type="text" id="edit-qr-hashtag" name="hashtag" style="
             border: 1px solid rgba(0,0,0,0.15);
             height: 42px;
             margin-bottom: 0;
@@ -603,18 +604,79 @@
           ">
         </div>
 
-        <div class="form-group" style="margin-bottom: 22px;">
-          <label for="edit-qr-expires-at" style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">ថ្ងៃខែឆ្នាំហួសកំណត់ (Expiration Date)</label>
-          <input type="date" id="edit-qr-expires-at" name="expires_at" style="
+        <!-- Default Location & Lock checkbox -->
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="edit-qr-default-location" style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">ឈ្មោះផ្សារ / ទីតាំងលំនាំដើម</label>
+          <input type="text" id="edit-qr-default-location" name="default_location" autocomplete="off" style="
             border: 1px solid rgba(0,0,0,0.15);
             height: 42px;
             margin-bottom: 0;
             background: #ffffff;
             color: #1e293b;
           ">
+          <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="edit-qr-cannot-edit-market" name="cannot_edit_market" value="true" style="width: 18px; height: 18px; cursor: pointer; accent-color: #ff3344; margin: 0; vertical-align: middle;">
+            <label for="edit-qr-cannot-edit-market" style="font-size: 0.82rem; color: #1e293b; font-weight: 600; cursor: pointer; margin-bottom: 0; display: inline-flex; align-items: center; gap: 4px;">
+              <i class="fa-solid fa-lock" style="color: #ff3344; font-size: 0.78rem;"></i> ចាក់សោរ មិនអាចកែប្រែបាន (cannot edit)
+            </label>
+          </div>
         </div>
 
-        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <!-- Start Date & Expiration Date (Flex Row) -->
+        <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+          <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label for="edit-qr-start-date" style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">ថ្ងៃខែចាប់ផ្តើម *</label>
+            <input type="date" id="edit-qr-start-date" name="start_date" required style="
+              border: 1px solid rgba(0,0,0,0.15);
+              height: 42px;
+              margin-bottom: 0;
+              background: #ffffff;
+              color: #1e293b;
+            ">
+          </div>
+          <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label for="edit-qr-expires-at" style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">ថ្ងៃខែឆ្នាំហួសកំណត់</label>
+            <input type="date" id="edit-qr-expires-at" name="expires_at" style="
+              border: 1px solid rgba(0,0,0,0.15);
+              height: 42px;
+              margin-bottom: 0;
+              background: #ffffff;
+              color: #1e293b;
+            ">
+          </div>
+        </div>
+
+        <!-- Social URLs -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="edit-qr-facebook-url" style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">Facebook URL</label>
+          <input type="text" id="edit-qr-facebook-url" name="facebook_url" style="border: 1px solid rgba(0,0,0,0.15); height: 40px; margin-bottom: 0; background: #ffffff; color: #1e293b;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="edit-qr-tiktok-url" style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">TikTok URL</label>
+          <input type="text" id="edit-qr-tiktok-url" name="tiktok_url" style="border: 1px solid rgba(0,0,0,0.15); height: 40px; margin-bottom: 0; background: #ffffff; color: #1e293b;">
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="edit-qr-youtube-url" style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">YouTube URL</label>
+          <input type="text" id="edit-qr-youtube-url" name="youtube_url" style="border: 1px solid rgba(0,0,0,0.15); height: 40px; margin-bottom: 0; background: #ffffff; color: #1e293b;">
+        </div>
+
+        <!-- Checkboxes -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px; background: rgba(0,0,0,0.02); padding: 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.06);">
+          <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 6px; color: #1e293b; cursor: pointer; font-weight: 600; margin: 0;">
+            <input type="checkbox" id="edit-qr-show-facebook" name="show_facebook" value="true" style="accent-color: #ff3344; width: 18px; height: 18px; cursor: pointer;"> បង្ហាញ Facebook
+          </label>
+          <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 6px; color: #1e293b; cursor: pointer; font-weight: 600; margin: 0;">
+            <input type="checkbox" id="edit-qr-show-tiktok" name="show_tiktok" value="true" style="accent-color: #ff3344; width: 18px; height: 18px; cursor: pointer;"> TikTok
+          </label>
+          <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 6px; color: #1e293b; cursor: pointer; font-weight: 600; margin: 0;">
+            <input type="checkbox" id="edit-qr-show-youtube" name="show_youtube" value="true" style="accent-color: #ff3344; width: 18px; height: 18px; cursor: pointer;"> YouTube
+          </label>
+          <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 6px; color: #1e293b; cursor: pointer; font-weight: 600; margin: 0;">
+            <input type="checkbox" id="edit-qr-capture-location" name="capture_location" value="true" style="accent-color: #ff3344; width: 18px; height: 18px; cursor: pointer;"> ចាប់ GPS Location
+          </label>
+        </div>
+
+        <div style="display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid rgba(0,0,0,0.08); padding-top: 15px;">
           <button type="button" onclick="closeEditQRModal()" class="btn btn-secondary" style="height: 40px; padding: 0 16px; font-size: 0.85rem;">បដិសេធ</button>
           <button type="submit" class="btn btn-primary" style="height: 40px; padding: 0 20px; font-size: 0.85rem; background: linear-gradient(135deg, #ff3344, #8b0000); border: none;">រក្សាទុក</button>
         </div>
@@ -629,6 +691,6 @@
   
   <!-- Custom JS -->
   <script src="js/keepalive.js"></script>
-  <script src="js/admin.js?v=3.4"></script>
+  <script src="js/admin.js?v=3.5"></script>
 </body>
 </html>

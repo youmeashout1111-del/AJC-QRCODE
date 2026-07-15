@@ -353,8 +353,21 @@ function setupEventListeners() {
     editQRForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const id = document.getElementById('edit-qr-id').value;
-      const expiresAt = document.getElementById('edit-qr-expires-at').value;
-      const startDate = document.getElementById('edit-qr-start-date').value;
+      const new_id = document.getElementById('edit-qr-id-val').value.trim();
+      const name = document.getElementById('edit-qr-name-val').value.trim();
+      const hashtag = document.getElementById('edit-qr-hashtag').value.trim();
+      const default_location = document.getElementById('edit-qr-default-location').value.trim();
+      const cannot_edit_market = document.getElementById('edit-qr-cannot-edit-market').checked;
+      const start_date = document.getElementById('edit-qr-start-date').value;
+      const expires_at = document.getElementById('edit-qr-expires-at').value;
+      const facebook_url = document.getElementById('edit-qr-facebook-url').value.trim();
+      const tiktok_url = document.getElementById('edit-qr-tiktok-url').value.trim();
+      const youtube_url = document.getElementById('edit-qr-youtube-url').value.trim();
+      const show_facebook = document.getElementById('edit-qr-show-facebook').checked;
+      const show_tiktok = document.getElementById('edit-qr-show-tiktok').checked;
+      const show_youtube = document.getElementById('edit-qr-show-youtube').checked;
+      const capture_location = document.getElementById('edit-qr-capture-location').checked;
+
       const submitBtn = editQRForm.querySelector('button[type="submit"]');
       const origHtml = submitBtn.innerHTML;
       
@@ -369,7 +382,22 @@ function setupEventListeners() {
             'Authorization': getAuthKey(),
             'X-Device-ID': getDeviceID()
           },
-          body: JSON.stringify({ expires_at: expiresAt, start_date: startDate })
+          body: JSON.stringify({
+            new_id,
+            name,
+            hashtag,
+            default_location,
+            cannot_edit_market,
+            start_date,
+            expires_at,
+            facebook_url,
+            tiktok_url,
+            youtube_url,
+            show_facebook,
+            show_tiktok,
+            show_youtube,
+            capture_location
+          })
         });
         
         const data = await res.json();
@@ -378,7 +406,7 @@ function setupEventListeners() {
           return;
         }
         
-        showToast('បានកែប្រែកាលបរិច្ឆេទហួសកំណត់ជោគជ័យ!', 'success');
+        showToast('បានកែប្រែព័ត៌មាន QR Code ជោគជ័យ!', 'success');
         closeEditQRModal();
         fetchData(); // Reload grid
       } catch (err) {
@@ -755,8 +783,8 @@ function renderQRCodes() {
           </button>
           <button type="button" class="btn btn-secondary btn-sm"
             style="padding:5px 8px;font-size:0.75rem;min-width:28px;height:28px;border-color:rgba(0,0,0,0.12);background:#fff;"
-            onclick="openEditQRModal('${qr.id}', '${escapeHTML(qr.name)}', '${qr.expires_at || ''}', '${qr.start_date || ''}')"
-            title="កែប្រែថ្ងៃហួសកំណត់">
+            onclick="openEditQRModal('${qr.id}')"
+            title="កែប្រែព័ត៌មាន">
             <i class="fa-solid fa-pen-to-square" style="color:#ffb703;"></i>
           </button>
           <button type="button" class="btn btn-danger btn-sm"
@@ -2610,15 +2638,32 @@ async function updateKeyValue(keyVal, roleVal, spanEl) {
 }
 
 // Edit QR Expiration modal handlers
-window.openEditQRModal = function(id, name, expiresAt, startDate) {
+window.openEditQRModal = function(id) {
+  if (typeof qrCodes === 'undefined' || !qrCodes) return;
+  const qr = qrCodes.find(item => item.id === id);
+  if (!qr) return;
+
   const modal = document.getElementById('edit-qr-modal');
   if (!modal) return;
   
-  document.getElementById('edit-qr-id').value = id;
-  document.getElementById('edit-qr-id-display').value = id;
-  document.getElementById('edit-qr-name-display').value = name;
-  document.getElementById('edit-qr-expires-at').value = expiresAt ? expiresAt.substring(0, 10) : '';
-  document.getElementById('edit-qr-start-date').value = startDate ? startDate.substring(0, 10) : '';
+  document.getElementById('edit-qr-id').value = qr.id;
+  document.getElementById('edit-qr-id-val').value = qr.id;
+  document.getElementById('edit-qr-name-val').value = qr.name;
+  document.getElementById('edit-qr-hashtag').value = qr.hashtag || '';
+  document.getElementById('edit-qr-default-location').value = qr.default_location || '';
+  
+  document.getElementById('edit-qr-cannot-edit-market').checked = qr.cannot_edit_market !== false;
+  document.getElementById('edit-qr-start-date').value = qr.start_date ? qr.start_date.substring(0, 10) : '';
+  document.getElementById('edit-qr-expires-at').value = qr.expires_at ? qr.expires_at.substring(0, 10) : '';
+  
+  document.getElementById('edit-qr-facebook-url').value = qr.facebook_url || '';
+  document.getElementById('edit-qr-tiktok-url').value = qr.tiktok_url || '';
+  document.getElementById('edit-qr-youtube-url').value = qr.youtube_url || '';
+  
+  document.getElementById('edit-qr-show-facebook').checked = qr.show_facebook !== false;
+  document.getElementById('edit-qr-show-tiktok').checked = qr.show_tiktok !== false;
+  document.getElementById('edit-qr-show-youtube').checked = qr.show_youtube !== false;
+  document.getElementById('edit-qr-capture-location').checked = qr.capture_location === true;
   
   modal.classList.remove('hidden');
 };

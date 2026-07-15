@@ -429,6 +429,7 @@ def get_qrcodes():
 
 @app.route('/api/qrcodes/public/<string:qr_id>', methods=['GET'])
 def get_public_qrcode(qr_id):
+    is_pg = bool(DATABASE_URL and HAS_PG)
     q_sel = """
         SELECT id, name, hashtag, facebook_url, tiktok_url, youtube_url,
                frame_image, frame_image_data, default_location,
@@ -579,17 +580,63 @@ def update_qrcode(qr_id):
         return jsonify({'error': 'គ្មានសិទ្ធិកែប្រែ QR Code ឡើយ!'}), 403
 
     data = request.json or {}
-    expires_at = data.get('expires_at', '').strip()
-    if not expires_at:
-        expires_at = None
-        
+    new_id             = data.get('new_id', qr_id).strip()
+    name               = data.get('name', '').strip()
+    hashtag            = data.get('hashtag', '').strip()
+    facebook_url       = data.get('facebook_url', 'https://facebook.com').strip()
+    tiktok_url         = data.get('tiktok_url',   'https://tiktok.com').strip()
+    youtube_url        = data.get('youtube_url',  'https://youtube.com').strip()
+    default_location   = data.get('default_location', '').strip()
+    show_facebook      = 1 if data.get('show_facebook') else 0
+    show_tiktok        = 1 if data.get('show_tiktok') else 0
+    show_youtube       = 1 if data.get('show_youtube') else 0
+    capture_location   = 1 if data.get('capture_location') else 0
+    cannot_edit_market = 1 if data.get('cannot_edit_market') else 0
+    
     start_date = data.get('start_date', '').strip()
     if not start_date:
         start_date = None
+        
+    expires_at = data.get('expires_at', '').strip()
+    if not expires_at:
+        expires_at = None
+
+    if not new_id or not name:
+        return jsonify({'error': 'មេត្តាបញ្ចូល Sales Team និង Depot!'}), 400
 
     is_pg = bool(DATABASE_URL and HAS_PG)
-    q_upd = "UPDATE qrcodes SET expires_at = %s, start_date = %s WHERE id = %s" if is_pg else "UPDATE qrcodes SET expires_at = ?, start_date = ? WHERE id = ?"
-    execute_query(q_upd, (expires_at, start_date, qr_id), commit=True)
+    
+    # If the user changed the ID, make sure the new ID is unique (excluding themselves)
+    if new_id.lower() != qr_id.lower():
+        q_chk = "SELECT 1 FROM qrcodes WHERE id = %s" if is_pg else "SELECT 1 FROM qrcodes WHERE id = ?"
+        if execute_query(q_chk, (new_id,), fetch_one=True):
+            return jsonify({'error': 'Sales Team ID ថ្មីនេះមានរួចហើយ!'}), 400
+            
+    q_upd = """
+        UPDATE qrcodes
+        SET id = %s, name = %s, hashtag = %s, facebook_url = %s, tiktok_url = %s, youtube_url = %s,
+            default_location = %s, show_facebook = %s, show_tiktok = %s, show_youtube = %s,
+            capture_location = %s, cannot_edit_market = %s, start_date = %s, expires_at = %s
+        WHERE id = %s
+    """ if is_pg else """
+        UPDATE qrcodes
+        SET id = ?, name = ?, hashtag = ?, facebook_url = ?, tiktok_url = ?, youtube_url = ?,
+            default_location = ?, show_facebook = ?, show_tiktok = ?, show_youtube = ?,
+            capture_location = ?, cannot_edit_market = ?, start_date = ?, expires_at = ?
+        WHERE id = ?
+    """
+    
+    execute_query(q_upd, (
+        new_id, name, hashtag, facebook_url, tiktok_url, youtube_url,
+        default_location, show_facebook, show_tiktok, show_youtube,
+        capture_location, cannot_edit_market, start_date, expires_at, qr_id
+    ), commit=True)
+    
+    # If the ID was updated, we MUST cascade the update to the scans table!
+    if new_id != qr_id:
+        q_scans = "UPDATE scans SET qr_id = %s WHERE qr_id = %s" if is_pg else "UPDATE scans SET qr_id = ? WHERE qr_id = ?"
+        execute_query(q_scans, (new_id, qr_id), commit=True)
+
     return jsonify({'message': 'បានកែប្រែដោយជោគជ័យ!'})
 
 # Serve frame image from DB Base64
