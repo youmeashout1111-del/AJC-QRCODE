@@ -296,6 +296,12 @@ function setupEventListeners() {
   // Batch download button
   document.getElementById('btn-batch-download').addEventListener('click', handleBatchDownload);
 
+  // Batch delete QR Codes button
+  const btnBatchDelete = document.getElementById('btn-batch-delete');
+  if (btnBatchDelete) {
+    btnBatchDelete.addEventListener('click', handleBatchDeleteQR);
+  }
+
   // Excel export button
   document.getElementById('btn-export-excel').addEventListener('click', exportLogsToExcel);
 
@@ -368,6 +374,41 @@ function setupEventListeners() {
       const show_youtube = document.getElementById('edit-qr-show-youtube').checked;
       const capture_location = document.getElementById('edit-qr-capture-location').checked;
 
+      // Uniqueness and Exact Duplicate Check for Edit Modal
+      let finalNewId = new_id;
+      if (typeof qrCodes !== 'undefined' && qrCodes) {
+        const otherQRs = qrCodes.filter(qr => qr.id.toLowerCase() !== id.toLowerCase());
+        const idExists = otherQRs.some(qr => qr.id.toLowerCase() === finalNewId.toLowerCase());
+        
+        if (idExists) {
+          const exactMatch = otherQRs.find(qr => 
+            qr.id.toLowerCase() === finalNewId.toLowerCase() &&
+            qr.name.toLowerCase() === name.toLowerCase() &&
+            (qr.hashtag || '').toLowerCase() === hashtag.toLowerCase() &&
+            (qr.default_location || '').toLowerCase() === default_location.toLowerCase() &&
+            (qr.start_date || '') === start_date &&
+            (qr.expires_at || '') === expires_at
+          );
+          
+          if (exactMatch) {
+            const proceed = confirm("ព័ត៌មាននេះដូចគ្នាទាំងស្រុងដែលបានបង្កើតហើយ តើអ្នកចង់រក្សាទុកមែនទេ?");
+            if (!proceed) return;
+          }
+          
+          // Auto-generate unique ID by appending -copy or -copy-1
+          let candidate = finalNewId + '-copy';
+          if (!qrCodes.some(qr => qr.id.toLowerCase() === candidate.toLowerCase())) {
+            finalNewId = candidate;
+          } else {
+            let counter = 1;
+            while (qrCodes.some(qr => qr.id.toLowerCase() === (finalNewId + '-copy-' + counter).toLowerCase())) {
+              counter++;
+            }
+            finalNewId = finalNewId + '-copy-' + counter;
+          }
+        }
+      }
+
       const submitBtn = editQRForm.querySelector('button[type="submit"]');
       const origHtml = submitBtn.innerHTML;
       
@@ -383,7 +424,7 @@ function setupEventListeners() {
             'X-Device-ID': getDeviceID()
           },
           body: JSON.stringify({
-            new_id,
+            new_id: finalNewId,
             name,
             hashtag,
             default_location,
@@ -1017,8 +1058,52 @@ async function deleteQRCode(id) {
   }
 }
 
+// Bulk Delete Checked QR Codes
+async function handleBatchDeleteQR() {
+  const checkedBoxes = document.querySelectorAll('.qr-card-select:checked');
+  if (checkedBoxes.length === 0) {
+    showToast('សូមជ្រើសរើស QR Code យ៉ាងហោចណាស់មួយដើម្បីលុប!', 'error');
+    return;
+  }
+  
+  if (!confirm(`តើអ្នកពិតជាចង់លុប QR Code ទាំង ${checkedBoxes.length} ដែលបានជ្រើសរើសនេះមែនទេ? (សកម្មភាពនេះមិនអាចត្រឡប់ក្រោយបានឡើយ)`)) {
+    return;
+  }
+  
+  showToast('កំពុងលុប QR Code ដែលបានជ្រើសរើស...', 'info');
+  
+  const promises = [];
+  checkedBoxes.forEach(cb => {
+    const qrId = cb.dataset.id;
+    const promise = fetch(`/api/qrcodes/${qrId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': getAuthKey(),
+        'X-Device-ID': getDeviceID()
+      }
+    }).then(async res => {
+      if (!res.ok) {
+        const data = await res.json();
+        console.error(`Failed to delete ${qrId}:`, data.error);
+      }
+    }).catch(err => {
+      console.error(`Error deleting ${qrId}:`, err);
+    });
+    promises.push(promise);
+  });
+  
+  await Promise.all(promises);
+  showToast('បានលុប QR Code ដែលបានជ្រើសរើសដោយជោគជ័យ!', 'success');
+  
+  // Uncheck the select-all checkbox
+  const selectAll = document.getElementById('select-all-qrs');
+  if (selectAll) selectAll.checked = false;
+  
+  fetchData();
+}
+
 // Helper to draw QR Code with Text Header (Team, Location & Expiration) on canvas
-function drawQRWithText(qrId, qrName, defaultLocation, expiresAt, scanUrl, callback) {
+function drawQRWithText(qrId, qrName, defaultLocation, expiresAt, startDate, scanUrl, callback) {
   // Generate QR in a temporary canvas
   const qrCanvas = document.createElement('canvas');
   QRCode.toCanvas(qrCanvas, scanUrl, {
@@ -1051,17 +1136,32 @@ function drawQRWithText(qrId, qrName, defaultLocation, expiresAt, scanUrl, callb
     }
     
     // Draw top line
-    ctx.font = "bold 32px 'Kantumruy Pro', Arial, sans-serif";
+    ctx.font = "bold 30px 'Kantumruy Pro', Arial, sans-serif";
     ctx.fillStyle = '#000000';
     ctx.textAlign = 'center';
-    ctx.fillText(line1, 300, 50);
+    ctx.fillText(line1, 300, 45);
     
     // Format bottom line
     const line2 = `ផ្សារ៖ ${defaultLocation || ''}`;
     
     // Draw bottom line
-    ctx.font = "bold 26px 'Kantumruy Pro', Arial, sans-serif";
-    ctx.fillText(line2, 300, 100);
+    ctx.font = "bold 24px 'Kantumruy Pro', Arial, sans-serif";
+    ctx.fillText(line2, 300, 85);
+
+    // Format start date line
+    let startFormatted = '';
+    if (startDate) {
+      const parts = startDate.split('-');
+      if (parts.length === 3) {
+        startFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      } else {
+        startFormatted = startDate;
+      }
+    }
+    const lineStart = `ចាប់ផ្តើម៖ ${startFormatted || '—'}`;
+
+    // Draw start date line
+    ctx.fillText(lineStart, 300, 125);
 
     // Format expiration line
     let expFormatted = '';
@@ -1076,7 +1176,7 @@ function drawQRWithText(qrId, qrName, defaultLocation, expiresAt, scanUrl, callb
     const line3 = `ផុតកំណត់៖ ${expFormatted || 'មិនមានកំណត់'}`;
 
     // Draw expiration line
-    ctx.fillText(line3, 300, 150);
+    ctx.fillText(line3, 300, 165);
     
     // Draw the QR Code canvas (600x600) onto the final canvas (starts at Y=200)
     ctx.drawImage(qrCanvas, 0, 200, 600, 600);
@@ -1121,9 +1221,10 @@ function downloadSingleQR(qrId, qrName, format) {
   const qr = qrCodes.find(q => q.id === qrId) || {};
   const defaultLocation = qr.default_location || '';
   const expiresAt = qr.expires_at || '';
+  const startDate = qr.start_date || '';
   
   if (format === 'png') {
-    drawQRWithText(qrId, qrName, defaultLocation, expiresAt, scanUrl, function(finalCanvas) {
+    drawQRWithText(qrId, qrName, defaultLocation, expiresAt, startDate, scanUrl, function(finalCanvas) {
       if (!finalCanvas) {
         showToast('មានបញ្ហាក្នុងការទាញយក!', 'error');
         return;
@@ -1151,6 +1252,17 @@ function downloadSingleQR(qrId, qrName, format) {
       }
       const line2 = `ផ្សារ៖ ${defaultLocation || ''}`;
       
+      let startFormatted = '';
+      if (startDate) {
+        const parts = startDate.split('-');
+        if (parts.length === 3) {
+          startFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        } else {
+          startFormatted = startDate;
+        }
+      }
+      const lineStart = `ចាប់ផ្តើម៖ ${startFormatted || '—'}`;
+
       let expFormatted = '';
       if (expiresAt) {
         const parts = expiresAt.split('-');
@@ -1166,9 +1278,10 @@ function downloadSingleQR(qrId, qrName, format) {
       const finalSvg = `
         <svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
           <rect width="600" height="800" fill="#ffffff"/>
-          <text x="300" y="50" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="32" fill="#000000" text-anchor="middle">${line1}</text>
-          <text x="300" y="100" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="26" fill="#000000" text-anchor="middle">${line2}</text>
-          <text x="300" y="150" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="26" fill="#000000" text-anchor="middle">${line3}</text>
+          <text x="300" y="45" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="30" fill="#000000" text-anchor="middle">${line1}</text>
+          <text x="300" y="85" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="24" fill="#000000" text-anchor="middle">${line2}</text>
+          <text x="300" y="125" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="24" fill="#000000" text-anchor="middle">${lineStart}</text>
+          <text x="300" y="165" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="24" fill="#000000" text-anchor="middle">${line3}</text>
           <g transform="translate(0, 200)">
             ${qrSvgContent}
           </g>
@@ -1203,7 +1316,8 @@ async function handleBatchDownload() {
     const scanUrl = getScanUrl(qrId);
     
     const promise = new Promise((resolve) => {
-      drawQRWithText(qrId, qrName, defaultLocation, expiresAt, scanUrl, function(finalCanvas) {
+      const startDate = qr.start_date || '';
+      drawQRWithText(qrId, qrName, defaultLocation, expiresAt, startDate, scanUrl, function(finalCanvas) {
         if (!finalCanvas) {
           resolve();
           return;
@@ -2781,7 +2895,8 @@ function duplicateQR(id) {
   const qr = qrCodes.find(item => item.id === id);
   if (!qr) return;
 
-  document.getElementById('qr-id').value = qr.id + '-copy';
+  const cleanId = qr.id.replace(/-copy(-\d+)?$/, '');
+  document.getElementById('qr-id').value = cleanId;
   document.getElementById('qr-name').value = qr.name;
   document.getElementById('qr-hashtag').value = qr.hashtag || '';
   document.getElementById('qr-default-location').value = qr.default_location || '';
