@@ -152,7 +152,7 @@
           <!-- QR ID -->
           <div class="form-group">
             <label for="qr-id">Sales Team (Unique ID) *</label>
-            <input type="text" id="qr-id" name="id" placeholder="ឧ. Team-A, Sales-01" required>
+            <input type="text" id="qr-id" name="id" placeholder="ឧ. Team-A, Sales-01" required autocomplete="off">
             <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 4px;">
               * មិនអនុញ្ញាតអោយស្ទួនគ្នាទេ និងកុំប្រើចន្លោះទទេ (space)
             </small>
@@ -161,7 +161,7 @@
           <!-- Name / Label -->
           <div class="form-group">
             <label for="qr-name">Depot *</label>
-            <input type="text" id="qr-name" name="name" placeholder="ឧ. Depot-A, Depot-B" required>
+            <input type="text" id="qr-name" name="name" placeholder="ឧ. Depot-A, Depot-B" required autocomplete="off">
           </div>
 
           <!-- Hashtag -->
@@ -173,7 +173,7 @@
           <!-- Default Location -->
           <div class="form-group">
             <label for="qr-default-location">ឈ្មោះផ្សារ / ទីតាំងលំនាំដើម (Default Market/Location)</label>
-            <input type="text" id="qr-default-location" name="default_location" placeholder="ឧ. ផ្សារអូរឫស្សី Stall A12">
+            <input type="text" id="qr-default-location" name="default_location" placeholder="ឧ. ផ្សារអូរឫស្សី Stall A12" autocomplete="off">
             <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
               <input type="checkbox" id="qr-cannot-edit-market" name="cannot_edit_market" value="true" checked style="width: 18px; height: 18px; cursor: pointer; accent-color: #ff3344; margin: 0;">
               <label for="qr-cannot-edit-market" style="font-size: 0.82rem; color: #1e293b; font-weight: 600; cursor: pointer; margin-bottom: 0; display: inline-flex; align-items: center; gap: 4px;">
@@ -629,6 +629,6 @@
   
   <!-- Custom JS -->
   <script src="js/keepalive.js"></script>
-  <script src="js/admin.js?v=3.2"></script>
+  <script src="js/admin.js?v=3.4"></script>
 </body>
 </html>

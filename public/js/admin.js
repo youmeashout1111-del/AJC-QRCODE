@@ -879,6 +879,46 @@ async function handleCreateQR(e) {
     return;
   }
   
+  if (typeof qrCodes !== 'undefined' && qrCodes) {
+    const idExists = qrCodes.some(qr => qr.id.toLowerCase() === qrId.toLowerCase());
+    if (idExists) {
+      const nameVal = formData.get('name').trim();
+      const hashtagVal = formData.get('hashtag').trim();
+      const defaultLocationVal = formData.get('default_location').trim();
+      const startDateVal = formData.get('start_date').trim();
+      const expiresAtVal = formData.get('expires_at').trim();
+      
+      const exactMatch = qrCodes.find(qr => 
+        qr.id.toLowerCase() === qrId.toLowerCase() &&
+        qr.name.toLowerCase() === nameVal.toLowerCase() &&
+        (qr.hashtag || '').toLowerCase() === hashtagVal.toLowerCase() &&
+        (qr.default_location || '').toLowerCase() === defaultLocationVal.toLowerCase() &&
+        (qr.start_date || '') === startDateVal &&
+        (qr.expires_at || '') === expiresAtVal
+      );
+      
+      if (exactMatch) {
+        const proceed = confirm("ព័ត៌មាននេះដូចគ្នាទាំងស្រុងដែលបានបង្កើតហើយ តើអ្នកចង់បង្កើតមួយទៀតមែនទេ?");
+        if (!proceed) return;
+      }
+      
+      // Auto-generate unique ID by appending -copy or -copy-1
+      let finalId = qrId;
+      let candidate = qrId + '-copy';
+      if (!qrCodes.some(qr => qr.id.toLowerCase() === candidate.toLowerCase())) {
+        finalId = candidate;
+      } else {
+        let counter = 1;
+        while (qrCodes.some(qr => qr.id.toLowerCase() === (qrId + '-copy-' + counter).toLowerCase())) {
+          counter++;
+        }
+        finalId = qrId + '-copy-' + counter;
+      }
+      
+      formData.set('id', finalId);
+    }
+  }
+  
   try {
     const res = await fetch('/api/qrcodes', {
       method: 'POST',
@@ -900,6 +940,18 @@ async function handleCreateQR(e) {
     
     // Reset Form
     form.reset();
+    
+    // Re-initialize default dates
+    const startInput = document.getElementById('qr-start-date');
+    if (startInput) {
+      startInput.value = new Date().toLocaleDateString('sv');
+    }
+    const expiresInput = document.getElementById('qr-expires-at');
+    if (expiresInput) {
+      const today = new Date();
+      today.setFullYear(today.getFullYear() + 1);
+      expiresInput.value = today.toLocaleDateString('sv');
+    }
     
     // Fetch and redraw
     fetchData();

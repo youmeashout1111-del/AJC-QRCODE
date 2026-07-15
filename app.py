@@ -415,6 +415,7 @@ def get_qrcodes():
     result = []
     
     for row in rows:
+        q = dict(row)
         q['show_facebook']    = bool(q['show_facebook'])
         q['show_tiktok']      = bool(q['show_tiktok'])
         q['show_youtube']     = bool(q['show_youtube'])
