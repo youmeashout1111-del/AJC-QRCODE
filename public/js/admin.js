@@ -453,8 +453,26 @@ function setupEventListeners() {
               marketDatalist.appendChild(option);
             });
           }
-        }
       }
+    });
+  }
+  // Clear value on focus to show all datalist options, restore on blur
+  const locInput = document.getElementById('qr-default-location');
+  if (locInput) {
+    let prevVal = '';
+    locInput.addEventListener('focus', () => {
+      prevVal = locInput.value;
+      locInput.placeholder = prevVal || 'ឧ. ផ្សារអូរឫស្សី Stall A12';
+      locInput.value = '';
+    });
+    locInput.addEventListener('blur', () => {
+      // Small timeout so datalist option selection registers first
+      setTimeout(() => {
+        if (locInput.value === '') {
+          locInput.value = prevVal;
+        }
+        locInput.placeholder = 'ឧ. ផ្សារអូរឫស្សី Stall A12';
+      }, 200);
     });
   }
 }
