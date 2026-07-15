@@ -787,7 +787,10 @@ function renderQRCodes() {
       </td>
       <td style="vertical-align:middle;padding:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
         <div style="font-weight:700;color:var(--text-main);" title="${escapeHTML(qr.name)}">${escapeHTML(qr.name)}</div>
-        <div style="font-size:0.7rem;color:#ff3344;margin-top:2px;" title="ថ្ងៃហួសកំណត់">
+        <div style="font-size:0.7rem;color:#2ec4b6;margin-top:2px;" title="ថ្ងៃចាប់ផ្តើម">
+          <i class="fa-regular fa-calendar-check" style="opacity:0.75;"></i> ${qr.start_date ? qr.start_date : 'No Start'}
+        </div>
+        <div style="font-size:0.7rem;color:#ff3344;margin-top:1px;" title="ថ្ងៃហួសកំណត់">
           <i class="fa-regular fa-calendar-times" style="opacity:0.75;"></i> ${qr.expires_at ? qr.expires_at : 'No Limit'}
         </div>
       </td>
@@ -803,6 +806,12 @@ function renderQRCodes() {
       <td style="text-align:center;vertical-align:middle;font-weight:700;color:#ff3344;padding:8px 4px;">${qr.scan_count || 0}</td>
       <td style="text-align:center;vertical-align:middle;padding:8px 4px;">
         <div style="display:flex;gap:4px;justify-content:center;flex-wrap:nowrap;">
+          <button type="button" class="btn btn-secondary btn-sm"
+            style="padding:0;font-size:0.8rem;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-color:rgba(0,0,0,0.12);background:#fff;"
+            onclick="previewQRCode('${qr.id}')"
+            title="មើល QR Code">
+            <i class="fa-solid fa-eye" style="color:#8f00ff;"></i>
+          </button>
           <button type="button" class="btn btn-secondary btn-sm"
             style="padding:0;font-size:0.8rem;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-color:rgba(0,0,0,0.12);background:#fff;"
             onclick="downloadSingleQR('${qr.id}','${escapeHTML(qr.name)}','png')"
@@ -2795,6 +2804,52 @@ window.openEditQRModal = function(id) {
 
 window.closeEditQRModal = function() {
   const modal = document.getElementById('edit-qr-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+};
+
+window.previewQRCode = function(id) {
+  if (typeof qrCodes === 'undefined' || !qrCodes) return;
+  const qr = qrCodes.find(item => item.id === id);
+  if (!qr) return;
+
+  const modal = document.getElementById('preview-qr-modal');
+  if (!modal) return;
+
+  const container = document.getElementById('preview-qr-container');
+  container.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; color: #ff3344;"></i>';
+
+  document.getElementById('preview-qr-title').textContent = `Preview: Team ${qr.id.replace(/-copy(-\d+)?$/, '')}`;
+
+  const scanUrl = getScanUrl(qr.id);
+  const defaultLocation = qr.default_location || '';
+  const expiresAt = qr.expires_at || '';
+  const startDate = qr.start_date || '';
+
+  // Generate canvas with text
+  drawQRWithText(qr.id, qr.name, defaultLocation, expiresAt, startDate, scanUrl, function(finalCanvas) {
+    if (!finalCanvas) {
+      container.innerHTML = '<span style="color: #ff3366;">មិនអាចបង្កើតរូបភាព Preview បានទេ!</span>';
+      return;
+    }
+
+    // Convert canvas to image tag so it displays and scales beautifully
+    const img = document.createElement('img');
+    img.src = finalCanvas.toDataURL('image/png');
+    img.style.maxWidth = '100%';
+    img.style.height = 'auto';
+    img.style.borderRadius = '4px';
+
+    container.innerHTML = '';
+    container.appendChild(img);
+  });
+
+  modal.classList.remove('hidden');
+};
+
+window.closePreviewQRModal = function() {
+  const modal = document.getElementById('preview-qr-modal');
   if (modal) {
     modal.classList.add('hidden');
   }

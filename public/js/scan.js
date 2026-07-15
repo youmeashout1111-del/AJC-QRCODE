@@ -158,6 +158,28 @@ function showError(msg) {
       const p = errCard.querySelector('p');
       if (p) p.textContent = msg;
     }
+    
+    // Dynamically change button to "បិទកម្មវិធី"
+    const btn = errCard.querySelector('a, button');
+    if (btn) {
+      btn.textContent = 'បិទកម្មវិធី';
+      btn.removeAttribute('href');
+      btn.style.cursor = 'pointer';
+      
+      const newBtn = btn.cloneNode(true);
+      newBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.close();
+        if (typeof WeixinJSBridge !== 'undefined') {
+          WeixinJSBridge.call('closeWindow');
+        }
+        setTimeout(() => {
+          window.location.href = "about:blank";
+        }, 200);
+      });
+      btn.parentNode.replaceChild(newBtn, btn);
+    }
+    
     errCard.classList.remove('hidden');
   }
 }
@@ -167,6 +189,20 @@ function setupEventListeners() {
   // Step 1 Form
   const form = document.getElementById('scan-info-form');
   form.addEventListener('submit', handleStep1Submit);
+
+  // Close App Button
+  const btnCloseApp = document.getElementById('btn-close-app');
+  if (btnCloseApp) {
+    btnCloseApp.addEventListener('click', () => {
+      window.close();
+      if (typeof WeixinJSBridge !== 'undefined') {
+        WeixinJSBridge.call('closeWindow');
+      }
+      setTimeout(() => {
+        window.location.href = "about:blank";
+      }, 200);
+    });
+  }
 
   // Step 2 Selectors
   const btnCamera = document.getElementById('btn-use-camera');

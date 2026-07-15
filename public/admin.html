@@ -687,6 +687,37 @@
     </div>
   </div>
 
+  <!-- QR Code Preview Modal (Hidden initially) -->
+  <div id="preview-qr-modal" class="hidden" style="
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  ">
+    <div class="glass-panel" style="width: 480px; max-width: 95%; background: #ffffff; padding: 25px; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.18); border-color: rgba(220, 20, 30, 0.15); max-height: 90vh; overflow-y: auto; text-align: center;">
+      <h3 id="preview-qr-title" style="margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; color: #ff3344; font-size: 1.15rem; font-weight: 700;">
+        <i class="fa-solid fa-eye"></i> Preview QR Code
+      </h3>
+      
+      <div id="preview-qr-container" style="background: #ffffff; padding: 10px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: inline-flex; justify-content: center; align-items: center; max-width: 100%; min-height: 250px;">
+        <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; color: #ff3344;"></i>
+      </div>
+      
+      <p style="margin-top: 15px; font-size: 0.85rem; color: #64748b; font-weight: 600;">
+        បងអាចស្កេនតេស្តសាកល្បងដោយផ្ទាល់ពីលើអេក្រង់នេះបាន។
+      </p>
+
+      <div style="display: flex; gap: 12px; justify-content: center; border-top: 1px solid rgba(0,0,0,0.08); padding-top: 15px; margin-top: 15px;">
+        <button type="button" onclick="closePreviewQRModal()" class="btn btn-secondary" style="height: 40px; padding: 0 24px; font-size: 0.85rem;">បិទ</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Local JS Libraries -->
   <script src="js/qrcode.min.js"></script>
   <script src="js/jszip.min.js"></script>
@@ -694,6 +725,6 @@
   
   <!-- Custom JS -->
   <script src="js/keepalive.js"></script>
-  <script src="js/admin.js?v=4.0"></script>
+  <script src="js/admin.js?v=4.2"></script>
 </body>
 </html>
