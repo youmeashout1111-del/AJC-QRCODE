@@ -403,15 +403,55 @@ function setupEventListeners() {
   if (qrIdInput) {
     qrIdInput.addEventListener('input', (e) => {
       const val = e.target.value.trim();
-      if (typeof uploadedExcelData !== 'undefined' && uploadedExcelData && uploadedExcelData.length > 0 && val) {
-        const match = uploadedExcelData.find(item => item.teamId.toLowerCase() === val.toLowerCase());
-        if (match) {
-          const nameInput = document.getElementById('qr-name');
-          if (nameInput) nameInput.value = match.depot;
-          
-          const locInput = document.getElementById('qr-default-location');
-          if (locInput && match.market) {
-            locInput.value = match.market;
+      if (typeof uploadedExcelData !== 'undefined' && uploadedExcelData && uploadedExcelData.length > 0) {
+        if (val) {
+          const matches = uploadedExcelData.filter(item => item.teamId.toLowerCase() === val.toLowerCase());
+          if (matches.length > 0) {
+            const nameInput = document.getElementById('qr-name');
+            if (nameInput) nameInput.value = matches[0].depot;
+            
+            const locInput = document.getElementById('qr-default-location');
+            if (locInput) {
+              if (matches[0].market) {
+                locInput.value = matches[0].market;
+              }
+              
+              // Filter markets datalist specifically for this team preserving list order
+              let marketDatalist = document.getElementById('markets-list');
+              if (!marketDatalist) {
+                marketDatalist = document.createElement('datalist');
+                marketDatalist.id = 'markets-list';
+                document.body.appendChild(marketDatalist);
+              }
+              marketDatalist.innerHTML = '';
+              
+              const teamMarkets = [];
+              matches.forEach(item => {
+                if (item.market && !teamMarkets.includes(item.market)) {
+                  teamMarkets.push(item.market);
+                }
+              });
+              
+              teamMarkets.forEach(market => {
+                const option = document.createElement('option');
+                option.value = market;
+                marketDatalist.appendChild(option);
+              });
+              
+              locInput.setAttribute('list', 'markets-list');
+            }
+          }
+        } else {
+          // If val is cleared, restore all markets to the datalist
+          let marketDatalist = document.getElementById('markets-list');
+          if (marketDatalist) {
+            marketDatalist.innerHTML = '';
+            const uniqueMarkets = [...new Set(uploadedExcelData.map(item => item.market).filter(m => m !== ""))];
+            uniqueMarkets.forEach(market => {
+              const option = document.createElement('option');
+              option.value = market;
+              marketDatalist.appendChild(option);
+            });
           }
         }
       }
