@@ -383,6 +383,40 @@ function setupEventListeners() {
       }
     });
   }
+
+  // Excel Template download
+  const btnExportTemplate = document.getElementById('btn-export-excel-template');
+  if (btnExportTemplate) {
+    btnExportTemplate.addEventListener('click', downloadExcelTemplate);
+  }
+
+  // Excel Upload trigger
+  const btnImportExcel = document.getElementById('btn-import-excel');
+  const excelFileInput = document.getElementById('excel-file-input');
+  if (btnImportExcel && excelFileInput) {
+    btnImportExcel.addEventListener('click', () => excelFileInput.click());
+    excelFileInput.addEventListener('change', handleExcelUpload);
+  }
+
+  // Sales Team ID Input event to auto-populate Depot and Market Name
+  const qrIdInput = document.getElementById('qr-id');
+  if (qrIdInput) {
+    qrIdInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      if (typeof uploadedExcelData !== 'undefined' && uploadedExcelData && uploadedExcelData.length > 0 && val) {
+        const match = uploadedExcelData.find(item => item.teamId.toLowerCase() === val.toLowerCase());
+        if (match) {
+          const nameInput = document.getElementById('qr-name');
+          if (nameInput) nameInput.value = match.depot;
+          
+          const locInput = document.getElementById('qr-default-location');
+          if (locInput && match.market) {
+            locInput.value = match.market;
+          }
+        }
+      }
+    });
+  }
 }
 
 // Fetch all QR codes, scan logs and update UI
@@ -647,6 +681,12 @@ function renderQRCodes() {
             <i class="fa-solid fa-file-code" style="color:#00e5ff;"></i>
           </button>
           ${isAdmin ? `
+          <button type="button" class="btn btn-secondary btn-sm"
+            style="padding:5px 8px;font-size:0.75rem;min-width:28px;height:28px;border-color:rgba(0,0,0,0.12);background:#fff;"
+            onclick="duplicateQR('${qr.id}')"
+            title="Duplicate (ចម្លងបង្កើតថ្មី)">
+            <i class="fa-solid fa-copy" style="color:#4CAF50;"></i>
+          </button>
           <button type="button" class="btn btn-secondary btn-sm"
             style="padding:5px 8px;font-size:0.75rem;min-width:28px;height:28px;border-color:rgba(0,0,0,0.12);background:#fff;"
             onclick="openEditQRModal('${qr.id}', '${escapeHTML(qr.name)}', '${qr.expires_at || ''}')"
@@ -2473,4 +2513,138 @@ window.closeEditQRModal = function() {
 
 window.updateKeyValue = updateKeyValue;
 window.loadRecoverySetting = loadRecoverySetting;
+
+// ── Excel and Duplicate Helpers ──
+let uploadedExcelData = [];
+
+function downloadExcelTemplate() {
+  const data = [
+    {
+      "Sales Team (Unique ID)": "Team-A",
+      "Depot": "Phnom Penh Depot",
+      "Market Name": "ផ្សារច្បារអំពៅ"
+    },
+    {
+      "Sales Team (Unique ID)": "Team-B",
+      "Depot": "Kandal Depot",
+      "Market Name": "ផ្សារតាខ្មៅ"
+    }
+  ];
+  
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
+  XLSX.writeFile(workbook, "AJC_QR_Template.xlsx");
+}
+
+function handleExcelUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const statusEl = document.getElementById('excel-upload-status');
+  if (statusEl) {
+    statusEl.style.display = 'block';
+    statusEl.textContent = `បានជ្រើសរើស៖ ${file.name}`;
+    statusEl.style.color = '#4CAF50';
+  }
+  
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const json = XLSX.utils.sheet_to_json(worksheet);
+      
+      uploadedExcelData = json.map(row => {
+        const teamId = (row["Sales Team (Unique ID)"] || row["Sales Team ID"] || row["Sales Team"] || row["ID"] || "").toString().trim();
+        const depot = (row["Depot"] || row["Depot Name"] || row["Name"] || "").toString().trim();
+        const market = (row["Market Name"] || row["Market"] || row["ឈ្មោះផ្សារ"] || row["ទីតាំង"] || "").toString().trim();
+        return { teamId, depot, market };
+      }).filter(item => item.teamId !== "");
+      
+      if (uploadedExcelData.length === 0) {
+        showToast('គ្មានទិន្នន័យត្រឹមត្រូវក្នុង File Excel ឡើយ!', 'error');
+        return;
+      }
+      
+      // Setup Datalists for inputs
+      let teamDatalist = document.getElementById('teams-list');
+      if (!teamDatalist) {
+        teamDatalist = document.createElement('datalist');
+        teamDatalist.id = 'teams-list';
+        document.body.appendChild(teamDatalist);
+      }
+      teamDatalist.innerHTML = '';
+      
+      let marketDatalist = document.getElementById('markets-list');
+      if (!marketDatalist) {
+        marketDatalist = document.createElement('datalist');
+        marketDatalist.id = 'markets-list';
+        document.body.appendChild(marketDatalist);
+      }
+      marketDatalist.innerHTML = '';
+      
+      const uniqueTeams = [...new Set(uploadedExcelData.map(item => item.teamId))];
+      uniqueTeams.forEach(teamId => {
+        const option = document.createElement('option');
+        option.value = teamId;
+        teamDatalist.appendChild(option);
+      });
+      
+      const uniqueMarkets = [...new Set(uploadedExcelData.map(item => item.market).filter(m => m !== ""))];
+      uniqueMarkets.forEach(market => {
+        const option = document.createElement('option');
+        option.value = market;
+        marketDatalist.appendChild(option);
+      });
+      
+      document.getElementById('qr-id').setAttribute('list', 'teams-list');
+      document.getElementById('qr-default-location').setAttribute('list', 'markets-list');
+      
+      showToast(`បានបញ្ចូលទិន្នន័យ Sales Team ចំនួន ${uploadedExcelData.length} ជោគជ័យ!`, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('ការអាន File Excel មានបញ្ហា! សូមពិនិត្យមើលទ្រង់ទ្រាយឡើងវិញ។', 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function duplicateQR(id) {
+  if (typeof qrCodes === 'undefined' || !qrCodes) return;
+  const qr = qrCodes.find(item => item.id === id);
+  if (!qr) return;
+
+  document.getElementById('qr-id').value = qr.id + '-copy';
+  document.getElementById('qr-name').value = qr.name;
+  document.getElementById('qr-hashtag').value = qr.hashtag || '';
+  document.getElementById('qr-default-location').value = qr.default_location || '';
+  
+  if (qr.expires_at) {
+    document.getElementById('qr-expires-at').value = qr.expires_at.substring(0, 10);
+  } else {
+    document.getElementById('qr-expires-at').value = '';
+  }
+
+  document.getElementById('fb-url').value = qr.facebook_url || 'https://www.facebook.com';
+  document.getElementById('tt-url').value = qr.tiktok_url || 'https://www.tiktok.com';
+  document.getElementById('yt-url').value = qr.youtube_url || 'https://www.youtube.com';
+
+  document.querySelector('input[name="show_facebook"]').checked = qr.show_facebook !== false;
+  document.querySelector('input[name="show_tiktok"]').checked = qr.show_tiktok !== false;
+  document.querySelector('input[name="show_youtube"]').checked = qr.show_youtube !== false;
+  document.querySelector('input[name="capture_location"]').checked = qr.capture_location === true;
+  
+  const cannotEditCheck = document.getElementById('qr-cannot-edit-market');
+  if (cannotEditCheck) {
+    cannotEditCheck.checked = qr.cannot_edit_market !== false;
+  }
+
+  showToast(`បានចម្លងព័ត៌មានពី Sales Team "${qr.id}" រួចរាល់!`, 'success');
+  document.getElementById('create-qr-form').scrollIntoView({ behavior: 'smooth' });
+}
+
+window.duplicateQR = duplicateQR;
 

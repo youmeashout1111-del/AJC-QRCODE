@@ -180,7 +180,8 @@ def init_db():
             show_youtube     INTEGER DEFAULT 1,
             capture_location INTEGER DEFAULT 0,
             created_at       TEXT,
-            expires_at       TEXT
+            expires_at       TEXT,
+            cannot_edit_market INTEGER DEFAULT 1
         );
         """,
         """
@@ -228,12 +229,12 @@ def init_db():
     finally:
         conn.close()
 
-    # Legacy Schema Auto-Migrations: ensure created_at / expires_at column exists in keys, qrcodes, and frames tables
     for tbl, col_name, col_t in [
         ('keys', 'created_at', 'TEXT'),
         ('qrcodes', 'created_at', 'TEXT'),
         ('qrcodes', 'expires_at', 'TEXT'),
-        ('frames', 'created_at', 'TEXT')
+        ('frames', 'created_at', 'TEXT'),
+        ('qrcodes', 'cannot_edit_market', 'INTEGER DEFAULT 1')
     ]:
         try:
             execute_query(f"ALTER TABLE {tbl} ADD COLUMN {col_name} {col_t}", commit=True)
@@ -417,6 +418,7 @@ def get_qrcodes():
         q['show_tiktok']      = bool(q['show_tiktok'])
         q['show_youtube']     = bool(q['show_youtube'])
         q['capture_location'] = bool(q['capture_location'])
+        q['cannot_edit_market'] = bool(q.get('cannot_edit_market', 1))
         q['scan_count']       = int(q['scan_count'])
         result.append(q)
         
@@ -428,13 +430,13 @@ def get_public_qrcode(qr_id):
     q_sel = """
         SELECT id, name, hashtag, facebook_url, tiktok_url, youtube_url,
                frame_image, frame_image_data, default_location,
-               show_facebook, show_tiktok, show_youtube, capture_location, expires_at
+               show_facebook, show_tiktok, show_youtube, capture_location, expires_at, cannot_edit_market
         FROM qrcodes
         WHERE id = %s
     """ if is_pg else """
         SELECT id, name, hashtag, facebook_url, tiktok_url, youtube_url,
                frame_image, frame_image_data, default_location,
-               show_facebook, show_tiktok, show_youtube, capture_location, expires_at
+               show_facebook, show_tiktok, show_youtube, capture_location, expires_at, cannot_edit_market
         FROM qrcodes
         WHERE id = ?
     """
@@ -447,6 +449,7 @@ def get_public_qrcode(qr_id):
     q['show_tiktok']      = bool(q['show_tiktok'])
     q['show_youtube']     = bool(q['show_youtube'])
     q['capture_location'] = bool(q['capture_location'])
+    q['cannot_edit_market'] = bool(q.get('cannot_edit_market', 1))
     return jsonify(q)
 
 @app.route('/api/qrcodes', methods=['POST'])
@@ -467,6 +470,7 @@ def create_qrcode():
     show_tiktok      = 1 if request.form.get('show_tiktok')      == 'true' else 0
     show_youtube     = 1 if request.form.get('show_youtube')     == 'true' else 0
     capture_location = 1 if request.form.get('capture_location') == 'true' else 0
+    cannot_edit_market = 1 if request.form.get('cannot_edit_market') == 'true' else 0
 
     expires_at       = request.form.get('expires_at', '').strip()
     if not expires_at:
@@ -502,20 +506,20 @@ def create_qrcode():
         INSERT INTO qrcodes
             (id, name, hashtag, facebook_url, tiktok_url, youtube_url,
              frame_image, frame_image_data, default_location,
-             show_facebook, show_tiktok, show_youtube, capture_location, created_at, expires_at)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+             show_facebook, show_tiktok, show_youtube, capture_location, created_at, expires_at, cannot_edit_market)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
     """ if is_pg else """
         INSERT INTO qrcodes
             (id, name, hashtag, facebook_url, tiktok_url, youtube_url,
              frame_image, frame_image_data, default_location,
-             show_facebook, show_tiktok, show_youtube, capture_location, created_at, expires_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             show_facebook, show_tiktok, show_youtube, capture_location, created_at, expires_at, cannot_edit_market)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """
     
     execute_query(q_ins, (
         qr_id, name, hashtag, facebook_url, tiktok_url, youtube_url,
         frame_image, frame_image_data, default_location,
-        show_facebook, show_tiktok, show_youtube, capture_location, now, expires_at
+        show_facebook, show_tiktok, show_youtube, capture_location, now, expires_at, cannot_edit_market
     ), commit=True)
 
     return jsonify({
@@ -525,6 +529,7 @@ def create_qrcode():
         'default_location': default_location,
         'show_facebook': bool(show_facebook), 'show_tiktok': bool(show_tiktok),
         'show_youtube': bool(show_youtube), 'capture_location': bool(capture_location),
+        'cannot_edit_market': bool(cannot_edit_market),
         'created_at': now, 'expires_at': expires_at, 'scan_count': 0
     }), 201
 

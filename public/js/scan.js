@@ -71,6 +71,23 @@ async function fetchQRConfig() {
       document.getElementById('scanner-location').value = qrConfig.default_location;
     }
     
+    // Check if market edit is locked
+    const cannotEdit = qrConfig.cannot_edit_market !== false;
+    const locInput = document.getElementById('scanner-location');
+    if (locInput) {
+      if (cannotEdit) {
+        locInput.readOnly = true;
+        locInput.style.background = '#f1f5f9';
+        locInput.style.color = '#64748b';
+        locInput.style.cursor = 'not-allowed';
+      } else {
+        locInput.readOnly = false;
+        locInput.style.background = '';
+        locInput.style.color = '';
+        locInput.style.cursor = '';
+      }
+    }
+    
     // Toggle social share buttons visibility
     const showFb = qrConfig.show_facebook !== false;
     const showTt = qrConfig.show_tiktok !== false;
