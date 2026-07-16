@@ -144,6 +144,15 @@ def init_db():
     # Auto increment syntax: SQLite uses AUTOINCREMENT, PG uses SERIAL
     id_type = "SERIAL PRIMARY KEY" if is_pg else "INTEGER PRIMARY KEY AUTOINCREMENT"
     
+    # Migration: Check if market_templates has excel_document_id column. If not, drop table to recreate.
+    try:
+        execute_query("SELECT excel_document_id FROM market_templates LIMIT 1")
+    except Exception:
+        try:
+            execute_query("DROP TABLE IF EXISTS market_templates", commit=True)
+        except Exception:
+            pass
+
     queries = [
         f"""
         CREATE TABLE IF NOT EXISTS keys (
@@ -214,12 +223,21 @@ def init_db():
         );
         """,
         f"""
-        CREATE TABLE IF NOT EXISTS market_templates (
+        CREATE TABLE IF NOT EXISTS excel_documents (
             id          {id_type},
-            team_id     TEXT NOT NULL,
-            depot       TEXT NOT NULL,
-            market      TEXT NOT NULL,
+            filename    TEXT NOT NULL,
+            is_active   INTEGER DEFAULT 1,
             created_at  TEXT
+        );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS market_templates (
+            id                {id_type},
+            excel_document_id INTEGER NOT NULL REFERENCES excel_documents(id) ON DELETE CASCADE,
+            team_id           TEXT NOT NULL,
+            depot             TEXT NOT NULL,
+            market            TEXT NOT NULL,
+            created_at        TEXT
         );
         """,
         """
@@ -670,7 +688,13 @@ def get_market_templates():
         return jsonify({'error': 'គ្មានសិទ្ធិមើលបញ្ជីឡើយ!'}), 403
 
     is_pg = bool(DATABASE_URL and HAS_PG)
-    q_sel = "SELECT team_id, depot, market FROM market_templates ORDER BY id DESC"
+    q_sel = """
+        SELECT mt.team_id, mt.depot, mt.market 
+        FROM market_templates mt 
+        JOIN excel_documents ed ON mt.excel_document_id = ed.id 
+        WHERE ed.is_active = 1 
+        ORDER BY mt.id DESC
+    """
     rows = execute_query(q_sel, fetch_all=True)
     
     result = []
@@ -682,34 +706,98 @@ def get_market_templates():
         })
     return jsonify(result)
 
-@app.route('/api/market-templates/bulk', methods=['POST'])
-def save_market_templates():
+# ─── Excel Documents API ──────────────────────────────────────────────────────
+
+@app.route('/api/excel-documents', methods=['GET'])
+def get_excel_documents():
+    auth_key = request.headers.get('Authorization')
+    role = get_role_by_key(auth_key)
+    if role not in ['admin', 'moderator']:
+        return jsonify({'error': 'គ្មានសិទ្ធិមើលបញ្ជីឡើយ!'}), 403
+
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_sel = "SELECT id, filename, is_active, created_at FROM excel_documents ORDER BY id DESC"
+    rows = execute_query(q_sel, fetch_all=True)
+    
+    result = []
+    for r in rows:
+        result.append({
+            'id': r['id'],
+            'filename': r['filename'],
+            'is_active': bool(r['is_active']),
+            'created_at': r['created_at']
+        })
+    return jsonify(result)
+
+@app.route('/api/excel-documents', methods=['POST'])
+def upload_excel_document():
     auth_key = request.headers.get('Authorization')
     role = get_role_by_key(auth_key)
     if role not in ['admin', 'moderator']:
         return jsonify({'error': 'គ្មានសិទ្ធិគ្រប់គ្រងឡើយ!'}), 403
 
     data = request.json
-    if not isinstance(data, list):
+    filename = data.get('filename', 'Unknown.xlsx')
+    rows = data.get('rows', [])
+
+    if not isinstance(rows, list):
         return jsonify({'error': 'ទម្រង់ទិន្នន័យមិនត្រឹមត្រូវ!'}), 400
 
     is_pg = bool(DATABASE_URL and HAS_PG)
-    
-    # Clear existing templates
-    execute_query("DELETE FROM market_templates", commit=True)
-    
-    # Insert new templates
     now = get_ict_now()
-    q_ins = "INSERT INTO market_templates (team_id, depot, market, created_at) VALUES (%s, %s, %s, %s)" if is_pg else "INSERT INTO market_templates (team_id, depot, market, created_at) VALUES (?, ?, ?, ?)"
     
-    for item in data:
+    q_doc = "INSERT INTO excel_documents (filename, is_active, created_at) VALUES (%s, 1, %s) RETURNING id" if is_pg else "INSERT INTO excel_documents (filename, is_active, created_at) VALUES (?, 1, ?)"
+    
+    if is_pg:
+        doc_res = execute_query(q_doc, (filename, now), fetch_one=True, commit=True)
+        doc_id = doc_res['id']
+    else:
+        execute_query(q_doc, (filename, now), commit=True)
+        doc_res = execute_query("SELECT last_insert_rowid() as id", fetch_one=True)
+        doc_id = doc_res['id']
+
+    q_ins = "INSERT INTO market_templates (excel_document_id, team_id, depot, market, created_at) VALUES (%s, %s, %s, %s, %s)" if is_pg else "INSERT INTO market_templates (excel_document_id, team_id, depot, market, created_at) VALUES (?, ?, ?, ?, ?)"
+    
+    for item in rows:
         team_id = str(item.get('teamId', '')).strip()
         depot = str(item.get('depot', '')).strip()
         market = str(item.get('market', '')).strip()
         if team_id:
-            execute_query(q_ins, (team_id, depot, market, now), commit=True)
+            execute_query(q_ins, (doc_id, team_id, depot, market, now), commit=True)
             
-    return jsonify({'message': 'បានរក្សាទុកទិន្នន័យគំរូជោគជ័យ!'})
+    return jsonify({'message': 'បានបញ្ចូលឯកសារគំរូជោគជ័យ!', 'id': doc_id})
+
+@app.route('/api/excel-documents/<int:doc_id>/toggle', methods=['PUT'])
+def toggle_excel_document(doc_id):
+    auth_key = request.headers.get('Authorization')
+    role = get_role_by_key(auth_key)
+    if role not in ['admin', 'moderator']:
+        return jsonify({'error': 'គ្មានសិទ្ធិគ្រប់គ្រងឡើយ!'}), 403
+
+    is_active = 1 if request.json.get('is_active') is True else 0
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    
+    q_upd = "UPDATE excel_documents SET is_active = %s WHERE id = %s" if is_pg else "UPDATE excel_documents SET is_active = ? WHERE id = ?"
+    execute_query(q_upd, (is_active, doc_id), commit=True)
+    
+    return jsonify({'message': 'បានកែប្រែស្ថានភាពជោគជ័យ!'})
+
+@app.route('/api/excel-documents/<int:doc_id>', methods=['DELETE'])
+def delete_excel_document(doc_id):
+    auth_key = request.headers.get('Authorization')
+    role = get_role_by_key(auth_key)
+    if role not in ['admin', 'moderator']:
+        return jsonify({'error': 'គ្មានសិទ្ធិគ្រប់គ្រងឡើយ!'}), 403
+
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    
+    if not is_pg:
+        execute_query("PRAGMA foreign_keys = ON", commit=True)
+        
+    q_del = "DELETE FROM excel_documents WHERE id = %s" if is_pg else "DELETE FROM excel_documents WHERE id = ?"
+    execute_query(q_del, (doc_id,), commit=True)
+    
+    return jsonify({'message': 'បានលុបឯកសារគំរូជោគជ័យ!'})
 
 # Serve frame image from DB Base64
 @app.route('/api/frame-image/<qr_id>')

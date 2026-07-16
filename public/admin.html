@@ -147,6 +147,14 @@
             </div>
             <input type="file" id="excel-file-input" accept=".xlsx, .xls" class="hidden">
             <div id="excel-upload-status" style="font-size: 0.72rem; color: #4CAF50; font-weight: 600; text-align: center; margin-top: 6px; display: none;"></div>
+            
+            <!-- Uploaded Excel Documents List -->
+            <div id="excel-documents-list" style="margin-top: 10px; border-top: 1px solid rgba(220, 20, 30, 0.1); padding-top: 10px; font-size: 0.75rem;">
+              <div style="font-weight: bold; color: var(--text-main); margin-bottom: 5px;">បញ្ជីឯកសារគំរូ (Templates List)៖</div>
+              <div id="excel-docs-container" style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 2px;">
+                <div style="color: var(--text-muted); font-style: italic; text-align: center;">គ្មានឯកសារត្រូវបាន Upload ឡើយ</div>
+              </div>
+            </div>
           </div>
 
           <!-- QR ID -->
@@ -725,6 +733,6 @@
   
   <!-- Custom JS -->
   <script src="js/keepalive.js"></script>
-  <script src="js/admin.js?v=4.6"></script>
+  <script src="js/admin.js?v=4.7"></script>
 </body>
 </html>

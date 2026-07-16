@@ -2944,9 +2944,133 @@ function downloadExcelTemplate() {
   XLSX.writeFile(workbook, "AJC_QR_Template.xlsx");
 }
 
-// Fetch market templates from server and rebuild datalists
+// Render the list of uploaded Excel template documents
+function renderExcelDocuments(docs) {
+  const container = document.getElementById('excel-docs-container');
+  if (!container) return;
+  
+  if (!docs || docs.length === 0) {
+    container.innerHTML = `<div style="color: var(--text-muted); font-style: italic; text-align: center;">គ្មានឯកសារត្រូវបាន Upload ឡើយ</div>`;
+    return;
+  }
+  
+  container.innerHTML = '';
+  docs.forEach(doc => {
+    const item = document.createElement('div');
+    item.style.cssText = "display: flex; align-items: center; justify-content: space-between; background: #fff; padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 2px;";
+    
+    // Left side: Checkbox + Filename
+    const left = document.createElement('div');
+    left.style.cssText = "display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 8px;";
+    
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = doc.is_active;
+    cb.style.cssText = "cursor: pointer; accent-color: #ff3344; width: 14px; height: 14px; margin: 0;";
+    cb.addEventListener('change', (e) => {
+      toggleExcelDocument(doc.id, e.target.checked);
+    });
+    
+    const nameSpan = document.createElement('span');
+    nameSpan.style.cssText = "font-weight: 600; color: #334155; text-overflow: ellipsis; overflow: hidden;";
+    nameSpan.textContent = doc.filename;
+    nameSpan.title = doc.filename;
+    
+    left.appendChild(cb);
+    left.appendChild(nameSpan);
+    
+    // Right side: Delete button
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.style.cssText = "border: none; background: transparent; cursor: pointer; color: #ff3344; padding: 2px 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.82rem; transition: transform 0.2s;";
+    delBtn.innerHTML = `<i class="fa-solid fa-trash-can"></i>`;
+    delBtn.addEventListener('click', () => {
+      deleteExcelDocument(doc.id, doc.filename);
+    });
+    
+    delBtn.addEventListener('mouseover', () => { delBtn.style.transform = 'scale(1.15)'; });
+    delBtn.addEventListener('mouseout', () => { delBtn.style.transform = 'scale(1)'; });
+    
+    item.appendChild(left);
+    item.appendChild(delBtn);
+    container.appendChild(item);
+  });
+}
+
+// Toggle an Excel document active/inactive
+async function toggleExcelDocument(id, isActive) {
+  try {
+    const res = await fetch(`/api/excel-documents/${id}/toggle`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': getAuthKey(),
+        'X-Device-ID': getDeviceID()
+      },
+      body: JSON.stringify({ is_active: isActive })
+    });
+    
+    if (!res.ok) {
+      const data = await res.json();
+      showToast(data.error || 'ប្តូរស្ថានភាពបរាជ័យ!', 'error');
+      fetchMarketTemplates(); // Revert UI check
+      return;
+    }
+    
+    showToast('បានកែប្រែស្ថានភាពឯកសារជោគជ័យ!', 'success');
+    fetchMarketTemplates();
+  } catch (err) {
+    console.error(err);
+    showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
+    fetchMarketTemplates();
+  }
+}
+
+// Delete an Excel document
+async function deleteExcelDocument(id, filename) {
+  if (!confirm(`តើអ្នកពិតជាចង់លុបឯកសារគំរូ "${filename}" នេះមែនទេ? (ទិន្នន័យផ្សារទាំងអស់នៅក្នុង File នេះនឹងត្រូវបានលុបចេញពីប្រព័ន្ធ)`)) {
+    return;
+  }
+  
+  try {
+    const res = await fetch(`/api/excel-documents/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': getAuthKey(),
+        'X-Device-ID': getDeviceID()
+      }
+    });
+    
+    if (!res.ok) {
+      const data = await res.json();
+      showToast(data.error || 'លុបឯកសារបរាជ័យ!', 'error');
+      return;
+    }
+    
+    showToast('បានលុបឯកសារគំរូដោយជោគជ័យ!', 'success');
+    fetchMarketTemplates();
+  } catch (err) {
+    console.error(err);
+    showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
+  }
+}
+
+// Fetch market templates and documents from server and rebuild datalists
 async function fetchMarketTemplates() {
   try {
+    // 1. Fetch documents list first
+    const docsRes = await fetch('/api/excel-documents', {
+      headers: {
+        'Authorization': getAuthKey(),
+        'X-Device-ID': getDeviceID()
+      }
+    });
+    if (docsRes.ok) {
+      const docs = await docsRes.json();
+      renderExcelDocuments(docs);
+    }
+
+    // 2. Fetch templates
     const res = await fetch('/api/market-templates', {
       headers: {
         'Authorization': getAuthKey(),
@@ -3055,14 +3179,17 @@ function handleExcelUpload(e) {
         statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> កំពុងរក្សាទុកទៅកាន់ Server...`;
       }
       
-      fetch('/api/market-templates/bulk', {
+      fetch('/api/excel-documents', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': getAuthKey(),
           'X-Device-ID': getDeviceID()
         },
-        body: JSON.stringify(uploadedExcelData)
+        body: JSON.stringify({
+          filename: file.name,
+          rows: uploadedExcelData
+        })
       })
       .then(async res => {
         const data = await res.json();
@@ -3071,10 +3198,12 @@ function handleExcelUpload(e) {
           if (statusEl) statusEl.textContent = 'បរាជ័យ';
           return;
         }
-        showToast(`បានរក្សាទុកទិន្នន័យគំរូ Excel ចំនួន ${uploadedExcelData.length} ជោគជ័យ!`, 'success');
-        if (statusEl) statusEl.textContent = `បានរក្សាទុក៖ ${file.name}`;
+        showToast(`បានរក្សាទុកឯកសារ "${file.name}" ជោគជ័យ!`, 'success');
+        if (statusEl) {
+          statusEl.style.display = 'none';
+        }
         
-        // Rebuild datalists from backend
+        // Rebuild datalists and reload documents
         fetchMarketTemplates();
       })
       .catch(err => {
