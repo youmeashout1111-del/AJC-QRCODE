@@ -358,6 +358,15 @@ def file_to_base64(file_obj, ext):
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
 
+@app.after_request
+def add_header(response):
+    path = request.path
+    if path.endswith('.html') or path.endswith('.js') or path.endswith('.css') or path == '/' or path.startswith('/api/'):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 @app.route('/')
 def index():
     return send_from_directory(app.static_folder, 'admin.html')

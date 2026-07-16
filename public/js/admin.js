@@ -345,12 +345,10 @@ function setupEventListeners() {
     startInput.value = new Date().toLocaleDateString('sv');
   }
 
-  // Set default expiration date picker value (1 year from today) on create form
+  // Set default expiration date picker value (today) on create form
   const expiresInput = document.getElementById('qr-expires-at');
   if (expiresInput) {
-    const today = new Date();
-    today.setFullYear(today.getFullYear() + 1);
-    expiresInput.value = today.toLocaleDateString('sv');
+    expiresInput.value = new Date().toLocaleDateString('sv');
   }
 
   // Edit QR Form Submission
@@ -1026,9 +1024,7 @@ async function handleCreateQR(e) {
     }
     const expiresInput = document.getElementById('qr-expires-at');
     if (expiresInput) {
-      const today = new Date();
-      today.setFullYear(today.getFullYear() + 1);
-      expiresInput.value = today.toLocaleDateString('sv');
+      expiresInput.value = new Date().toLocaleDateString('sv');
     }
     
     // Fetch and redraw
@@ -2838,7 +2834,10 @@ window.previewQRCode = function(id) {
     const img = document.createElement('img');
     img.src = finalCanvas.toDataURL('image/png');
     img.style.maxWidth = '100%';
+    img.style.maxHeight = '55vh';
     img.style.height = 'auto';
+    img.style.width = 'auto';
+    img.style.objectFit = 'contain';
     img.style.borderRadius = '4px';
 
     container.innerHTML = '';
