@@ -1265,7 +1265,7 @@ function drawQRWithText(qrId, qrName, defaultLocation, expiresAt, startDate, sca
     }
     
     // Draw top line
-    ctx.font = "bold 30px 'Kantumruy Pro', Arial, sans-serif";
+    ctx.font = "bold 30px 'Khmer OS Siemreap', 'Siemreap', Arial, sans-serif";
     ctx.fillStyle = '#000000';
     ctx.textAlign = 'center';
     ctx.fillText(line1, 300, 45);
@@ -1274,7 +1274,7 @@ function drawQRWithText(qrId, qrName, defaultLocation, expiresAt, startDate, sca
     const line2 = `ផ្សារ៖ ${defaultLocation || ''}`;
     
     // Draw bottom line
-    ctx.font = "bold 24px 'Kantumruy Pro', Arial, sans-serif";
+    ctx.font = "bold 24px 'Khmer OS Siemreap', 'Siemreap', Arial, sans-serif";
     ctx.fillText(line2, 300, 85);
 
     // Format start date line
@@ -1411,10 +1411,10 @@ function downloadSingleQR(qrId, qrName, format) {
       const finalSvg = `
         <svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
           <rect width="600" height="800" fill="#ffffff"/>
-          <text x="300" y="45" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="30" fill="#000000" text-anchor="middle">${line1}</text>
-          <text x="300" y="85" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="24" fill="#000000" text-anchor="middle">${line2}</text>
-          <text x="300" y="125" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="24" fill="#000000" text-anchor="middle">${lineStart}</text>
-          <text x="300" y="165" font-family="'Kantumruy Pro', Arial, sans-serif" font-weight="bold" font-size="24" fill="#000000" text-anchor="middle">${line3}</text>
+          <text x="300" y="45" font-family="'Khmer OS Siemreap', 'Siemreap', Arial, sans-serif" font-weight="bold" font-size="30" fill="#000000" text-anchor="middle">${line1}</text>
+          <text x="300" y="85" font-family="'Khmer OS Siemreap', 'Siemreap', Arial, sans-serif" font-weight="bold" font-size="24" fill="#000000" text-anchor="middle">${line2}</text>
+          <text x="300" y="125" font-family="'Khmer OS Siemreap', 'Siemreap', Arial, sans-serif" font-weight="bold" font-size="24" fill="#000000" text-anchor="middle">${lineStart}</text>
+          <text x="300" y="165" font-family="'Khmer OS Siemreap', 'Siemreap', Arial, sans-serif" font-weight="bold" font-size="24" fill="#000000" text-anchor="middle">${line3}</text>
           <g transform="translate(0, 200)">
             ${qrSvgContent}
           </g>
