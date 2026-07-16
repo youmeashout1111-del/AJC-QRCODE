@@ -7,6 +7,16 @@ let capturedImageSrc = null;
 let userLatitude = null;
 let userLongitude = null;
 
+// Helper to format YYYY-MM-DD to DD/MM/YYYY
+function formatDateDMY(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+}
+
 // Image editing state (Zoom & Drag/Pan)
 let loadedUserImg = null;
 let loadedFrameImg = null;
@@ -63,10 +73,20 @@ async function fetchQRConfig() {
     }
     
     // Check if start date is in the future
+    const nowStr = new Date().toLocaleDateString('sv');
     if (qrConfig.start_date) {
-      const nowStr = new Date().toLocaleDateString('sv');
       if (nowStr < qrConfig.start_date) {
-        showError('មិនទាន់ដល់ថ្ងៃកំណត់ប្រើប្រាស់ឡើយ! (ចាប់ផ្តើមពីថ្ងៃទី ' + qrConfig.start_date + ')');
+        const formattedStart = formatDateDMY(qrConfig.start_date);
+        showError('មិនទាន់ដល់ថ្ងៃកំណត់ប្រើប្រាស់ឡើយ! (ចាប់ផ្តើមពីថ្ងៃទី ' + formattedStart + ')');
+        return;
+      }
+    }
+
+    // Check if QR code is expired
+    if (qrConfig.expires_at) {
+      if (nowStr > qrConfig.expires_at) {
+        const formattedExpiry = formatDateDMY(qrConfig.expires_at);
+        showError('QR Code នេះបានហួសកំណត់ប្រើប្រាស់ហើយ! (ផុតកំណត់ត្រឹមថ្ងៃទី ' + formattedExpiry + ')');
         return;
       }
     }
