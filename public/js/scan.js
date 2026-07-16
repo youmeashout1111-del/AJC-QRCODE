@@ -143,24 +143,17 @@ async function fetchQRConfig() {
       }
     }
     
-    // Fetch active frame mask from server (global active frame)
-    let frameSrc = '';
-    try {
-      const frameRes = await fetch('/api/frames/active');
-      if (frameRes.ok) {
-        const activeFrame = await frameRes.json();
-        frameSrc = activeFrame.image_data;
-      }
-    } catch (e) {
-      console.error('Error fetching active frame:', e);
-    }
-    
-    // Fallback if no active frame is set
-    if (!frameSrc) {
-      frameSrc = 'uploads/default_frame.svg';
-    }
-    
-    document.getElementById('camera-frame-mask').src = frameSrc;
+    // Fetch active frame mask from server (global active frame) in the background asynchronously
+    fetch('/api/frames/active')
+      .then(res => res.ok ? res.json() : null)
+      .then(activeFrame => {
+        const frameSrc = (activeFrame && activeFrame.image_data) ? activeFrame.image_data : 'uploads/default_frame.svg';
+        document.getElementById('camera-frame-mask').src = frameSrc;
+      })
+      .catch(e => {
+        console.error('Error fetching active frame in background:', e);
+        document.getElementById('camera-frame-mask').src = 'uploads/default_frame.svg';
+      });
     
   } catch (error) {
     console.error(error);
