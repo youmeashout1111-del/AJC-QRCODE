@@ -458,10 +458,10 @@ function setupEventListeners() {
     });
   }
 
-  // Excel Template download
-  const btnExportTemplate = document.getElementById('btn-export-excel-template');
-  if (btnExportTemplate) {
-    btnExportTemplate.addEventListener('click', downloadExcelTemplate);
+  // Excel Documents download
+  const btnDownloadDocs = document.getElementById('btn-download-excel-documents');
+  if (btnDownloadDocs) {
+    btnDownloadDocs.addEventListener('click', downloadCheckedExcelDocuments);
   }
 
   // Excel Upload trigger
@@ -2924,6 +2924,81 @@ window.loadRecoverySetting = loadRecoverySetting;
 // ── Excel and Duplicate Helpers ──
 let uploadedExcelData = [];
 
+async function downloadCheckedExcelDocuments() {
+  const checkedCBs = document.querySelectorAll('.excel-doc-checkbox:checked');
+  if (checkedCBs.length === 0) {
+    showToast('សូមជ្រើសរើសឯកសារគំរូយ៉ាងហោចណាស់មួយដើម្បីទាញយក!', 'error');
+    return;
+  }
+  
+  showToast('កំពុងទាញយកឯកសារ...', 'info');
+  
+  try {
+    if (checkedCBs.length === 1) {
+      // Single file download directly
+      const id = checkedCBs[0].dataset.id;
+      const res = await fetch(`/api/excel-documents/${id}/rows`, {
+        headers: {
+          'Authorization': getAuthKey(),
+          'X-Device-ID': getDeviceID()
+        }
+      });
+      if (!res.ok) throw new Error('Failed to fetch document rows');
+      const data = await res.json();
+      
+      const sheetRows = data.rows.map(row => ({
+        "Sales Team (Unique ID)": row.teamId,
+        "Depot": row.depot,
+        "Market Name": row.market
+      }));
+      
+      const ws = XLSX.utils.json_to_sheet(sheetRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Template");
+      XLSX.writeFile(wb, data.filename);
+      showToast('ទាញយកឯកសារជោគជ័យ!', 'success');
+    } else {
+      // Multiple files -> zip package
+      const zip = new JSZip();
+      const promises = Array.from(checkedCBs).map(async cb => {
+        const id = cb.dataset.id;
+        const res = await fetch(`/api/excel-documents/${id}/rows`, {
+          headers: {
+            'Authorization': getAuthKey(),
+            'X-Device-ID': getDeviceID()
+          }
+        });
+        if (!res.ok) throw new Error(`Failed to fetch rows for ${cb.dataset.filename}`);
+        const data = await res.json();
+        
+        const sheetRows = data.rows.map(row => ({
+          "Sales Team (Unique ID)": row.teamId,
+          "Depot": row.depot,
+          "Market Name": row.market
+        }));
+        
+        const ws = XLSX.utils.json_to_sheet(sheetRows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Template");
+        
+        // Write to array buffer
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        zip.file(data.filename, wbout);
+      });
+      
+      await Promise.all(promises);
+      
+      zip.generateAsync({ type: 'blob' }).then(content => {
+        saveAs(content, "AJC_Excel_Templates.zip");
+        showToast('ទាញយកឯកសារគំរូទាំងអស់ជោគជ័យ!', 'success');
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('ការទាញយកឯកសារមានបញ្ហា!', 'error');
+  }
+}
+
 function downloadExcelTemplate() {
   const data = [
     {
@@ -2965,6 +3040,9 @@ function renderExcelDocuments(docs) {
     
     const cb = document.createElement('input');
     cb.type = 'checkbox';
+    cb.className = 'excel-doc-checkbox';
+    cb.dataset.id = doc.id;
+    cb.dataset.filename = doc.filename;
     cb.checked = doc.is_active;
     cb.style.cssText = "cursor: pointer; accent-color: #ff3344; width: 14px; height: 14px; margin: 0;";
     cb.addEventListener('change', (e) => {
@@ -3143,80 +3221,107 @@ async function fetchMarketTemplates() {
 }
 
 function handleExcelUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
   
   const statusEl = document.getElementById('excel-upload-status');
   if (statusEl) {
     statusEl.style.display = 'block';
-    statusEl.textContent = `បានជ្រើសរើស៖ ${file.name}`;
+    statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> កំពុងអាន និងរក្សាទុក ${files.length} ឯកសារ...`;
     statusEl.style.color = '#4CAF50';
   }
-  
-  const reader = new FileReader();
-  reader.onload = function(evt) {
-    try {
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      const json = XLSX.utils.sheet_to_json(worksheet);
-      
-      uploadedExcelData = json.map(row => {
-        const teamId = (row["Sales Team (Unique ID)"] || row["Sales Team ID"] || row["Sales Team"] || row["ID"] || "").toString().trim();
-        const depot = (row["Depot"] || row["Depot Name"] || row["Name"] || "").toString().trim();
-        const market = (row["Market Name"] || row["Market"] || row["ឈ្មោះផ្សារ"] || row["ទីតាំង"] || "").toString().trim();
-        return { teamId, depot, market };
-      }).filter(item => item.teamId !== "");
-      
-      if (uploadedExcelData.length === 0) {
-        showToast('គ្មានទិន្នន័យត្រឹមត្រូវក្នុង File Excel ឡើយ!', 'error');
-        return;
-      }
-      
-      // Save templates to backend database
-      if (statusEl) {
-        statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> កំពុងរក្សាទុកទៅកាន់ Server...`;
-      }
-      
-      fetch('/api/excel-documents', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': getAuthKey(),
-          'X-Device-ID': getDeviceID()
-        },
-        body: JSON.stringify({
-          filename: file.name,
-          rows: uploadedExcelData
-        })
-      })
-      .then(async res => {
-        const data = await res.json();
-        if (!res.ok) {
-          showToast(data.error || 'រក្សាទុកគំរូ Excel បរាជ័យ!', 'error');
-          if (statusEl) statusEl.textContent = 'បរាជ័យ';
-          return;
+
+  const uploadPromises = [];
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const promise = new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet);
+          
+          const rows = json.map(row => {
+            const teamId = (row["Sales Team (Unique ID)"] || row["Sales Team ID"] || row["Sales Team"] || row["ID"] || "").toString().trim();
+            const depot = (row["Depot"] || row["Depot Name"] || row["Name"] || "").toString().trim();
+            const market = (row["Market Name"] || row["Market"] || row["ឈ្មោះផ្សារ"] || row["ទីតាំង"] || "").toString().trim();
+            return { teamId, depot, market };
+          }).filter(item => item.teamId !== "");
+          
+          if (rows.length === 0) {
+            resolve({ filename: file.name, success: false, error: 'គ្មានទិន្នន័យផ្សារត្រឹមត្រូវ' });
+            return;
+          }
+
+          // Upload to server
+          fetch('/api/excel-documents', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': getAuthKey(),
+              'X-Device-ID': getDeviceID()
+            },
+            body: JSON.stringify({
+              filename: file.name,
+              rows: rows
+            })
+          })
+          .then(async res => {
+            const data = await res.json();
+            if (!res.ok) {
+              resolve({ filename: file.name, success: false, error: data.error || 'រក្សាទុកបរាជ័យ' });
+            } else {
+              resolve({ filename: file.name, success: true });
+            }
+          })
+          .catch(err => {
+            console.error(err);
+            resolve({ filename: file.name, success: false, error: 'បញ្ហាតភ្ជាប់បណ្តាញ' });
+          });
+
+        } catch (err) {
+          console.error(err);
+          resolve({ filename: file.name, success: false, error: 'អានកំហុសឯកសារ' });
         }
-        showToast(`បានរក្សាទុកឯកសារ "${file.name}" ជោគជ័យ!`, 'success');
-        if (statusEl) {
-          statusEl.style.display = 'none';
-        }
-        
-        // Rebuild datalists and reload documents
-        fetchMarketTemplates();
-      })
-      .catch(err => {
-        console.error(err);
-        showToast('មានបញ្ហាជាមួយបណ្តាញតភ្ជាប់!', 'error');
-        if (statusEl) statusEl.textContent = 'កំហុសតភ្ជាប់';
-      });
-    } catch (err) {
-      console.error(err);
-      showToast('ការអាន File Excel មានបញ្ហា! សូមពិនិត្យមើលទ្រង់ទ្រាយឡើងវិញ។', 'error');
+      };
+      reader.readAsArrayBuffer(file);
+    });
+    uploadPromises.push(promise);
+  }
+
+  Promise.all(uploadPromises)
+  .then(results => {
+    const succeeded = results.filter(r => r.success).map(r => r.filename);
+    const failed = results.filter(r => !r.success);
+    
+    if (succeeded.length > 0) {
+      showToast(`បានរក្សាទុកឯកសារចំនួន ${succeeded.length} ជោគជ័យ!`, 'success');
     }
-  };
-  reader.readAsArrayBuffer(file);
+    
+    if (failed.length > 0) {
+      const errMsgs = failed.map(r => `"${r.filename}": ${r.error}`).join(', ');
+      showToast(`បរាជ័យចំនួន ${failed.length} ឯកសារ (${errMsgs})`, 'error');
+    }
+    
+    if (statusEl) {
+      statusEl.style.display = 'none';
+    }
+    
+    // Reset file input value so same files can be re-uploaded
+    e.target.value = '';
+    
+    // Refresh datalists and documents list
+    fetchMarketTemplates();
+  })
+  .catch(err => {
+    console.error(err);
+    showToast('មានបញ្ហាក្នុងការដំណើរការ!', 'error');
+    if (statusEl) statusEl.style.display = 'none';
+  });
 }
 
 function duplicateQR(id) {

@@ -799,6 +799,50 @@ def delete_excel_document(doc_id):
     
     return jsonify({'message': 'បានលុបឯកសារគំរូជោគជ័យ!'})
 
+@app.route('/api/excel-documents/<int:doc_id>/rows', methods=['GET'])
+def get_excel_document_rows(doc_id):
+    auth_key = request.headers.get('Authorization')
+    role = get_role_by_key(auth_key)
+    if role not in ['admin', 'moderator']:
+        return jsonify({'error': 'គ្មានសិទ្ធិមើលព័ត៌មានឡើយ!'}), 403
+
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    
+    # Get filename
+    q_doc = "SELECT filename FROM excel_documents WHERE id = %s" if is_pg else "SELECT filename FROM excel_documents WHERE id = ?"
+    doc = execute_query(q_doc, (doc_id,), fetch_one=True)
+    if not doc:
+        return jsonify({'error': 'រកមិនឃើញឯកសារឡើយ!'}), 404
+        
+    filename = doc['filename']
+    
+    # Get rows
+    q_rows = """
+        SELECT team_id, depot, market 
+        FROM market_templates 
+        WHERE excel_document_id = %s 
+        ORDER BY id ASC
+    """ if is_pg else """
+        SELECT team_id, depot, market 
+        FROM market_templates 
+        WHERE excel_document_id = ? 
+        ORDER BY id ASC
+    """
+    rows = execute_query(q_rows, (doc_id,), fetch_all=True)
+    
+    result_rows = []
+    for r in rows:
+        result_rows.append({
+            'teamId': r['team_id'],
+            'depot': r['depot'],
+            'market': r['market']
+        })
+        
+    return jsonify({
+        'filename': filename,
+        'rows': result_rows
+    })
+
 # Serve frame image from DB Base64
 @app.route('/api/frame-image/<qr_id>')
 def get_frame_image(qr_id):

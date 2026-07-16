@@ -138,14 +138,14 @@
               <i class="fa-solid fa-file-excel" style="color: #107c41;"></i> ឧបករណ៍ជំនួយ Excel (Excel Helper)
             </label>
             <div style="display: flex; gap: 8px; align-items: center;">
-              <button type="button" id="btn-export-excel-template" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 0.72rem; padding: 6px 10px; background: #fff; border: 1px solid rgba(0,0,0,0.12); color: #107c41; height: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
-                <i class="fa-solid fa-download"></i> ទាញយកគំរូ
+              <button type="button" id="btn-download-excel-documents" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 0.72rem; padding: 6px 10px; background: #fff; border: 1px solid rgba(0,0,0,0.12); color: #107c41; height: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                <i class="fa-solid fa-download"></i> ទាញយកឯកសារ
               </button>
               <button type="button" id="btn-import-excel" class="btn btn-primary btn-sm" style="flex: 1; font-size: 0.72rem; padding: 6px 10px; background: linear-gradient(135deg, #ff3344 0%, #b3001e 100%); border: none; height: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
                 <i class="fa-solid fa-file-import"></i> Upload Excel
               </button>
             </div>
-            <input type="file" id="excel-file-input" accept=".xlsx, .xls" class="hidden">
+            <input type="file" id="excel-file-input" accept=".xlsx, .xls" class="hidden" multiple>
             <div id="excel-upload-status" style="font-size: 0.72rem; color: #4CAF50; font-weight: 600; text-align: center; margin-top: 6px; display: none;"></div>
             
             <!-- Uploaded Excel Documents List -->
@@ -733,6 +733,6 @@
   
   <!-- Custom JS -->
   <script src="js/keepalive.js"></script>
-  <script src="js/admin.js?v=4.7"></script>
+  <script src="js/admin.js?v=4.9"></script>
 </body>
 </html>
