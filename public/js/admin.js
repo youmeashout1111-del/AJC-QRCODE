@@ -1515,6 +1515,7 @@ function exportLogsToExcel() {
   });
   
   const worksheet = XLSX.utils.json_to_sheet(data);
+  applySiemreapStyle(worksheet);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Scan Logs");
   
@@ -2981,6 +2982,23 @@ window.closePreviewQRModal = function() {
 window.updateKeyValue = updateKeyValue;
 window.loadRecoverySetting = loadRecoverySetting;
 
+// Helper to apply Khmer OS Siemreap font styling to worksheets
+function applySiemreapStyle(ws) {
+  if (!ws) return;
+  for (const key in ws) {
+    if (key[0] === '!') continue;
+    const cell = ws[key];
+    if (cell && typeof cell === 'object') {
+      cell.s = {
+        font: {
+          name: "Khmer OS Siemreap",
+          size: 11
+        }
+      };
+    }
+  }
+}
+
 // ── Excel and Duplicate Helpers ──
 let uploadedExcelData = [];
 
@@ -3009,10 +3027,12 @@ async function downloadCheckedExcelDocuments() {
       const sheetRows = data.rows.map(row => ({
         "Sales Team (Unique ID)": row.teamId,
         "Depot": row.depot,
+        "Text Hashtags": row.hashtag || '',
         "Market Name": row.market
       }));
       
       const ws = XLSX.utils.json_to_sheet(sheetRows);
+      applySiemreapStyle(ws);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Template");
       XLSX.writeFile(wb, data.filename);
@@ -3034,10 +3054,12 @@ async function downloadCheckedExcelDocuments() {
         const sheetRows = data.rows.map(row => ({
           "Sales Team (Unique ID)": row.teamId,
           "Depot": row.depot,
+          "Text Hashtags": row.hashtag || '',
           "Market Name": row.market
         }));
         
         const ws = XLSX.utils.json_to_sheet(sheetRows);
+        applySiemreapStyle(ws);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Template");
         
