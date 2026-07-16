@@ -213,8 +213,20 @@ def init_db():
             value  TEXT
         );
         """,
+        f"""
+        CREATE TABLE IF NOT EXISTS market_templates (
+            id          {id_type},
+            team_id     TEXT NOT NULL,
+            depot       TEXT NOT NULL,
+            market      TEXT NOT NULL,
+            created_at  TEXT
+        );
+        """,
         """
         CREATE INDEX IF NOT EXISTS idx_scans_qr_id ON scans (qr_id);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS idx_market_templates_team_id ON market_templates (team_id);
         """
     ]
     
@@ -647,6 +659,57 @@ def update_qrcode(qr_id):
         execute_query(q_scans, (new_id, qr_id), commit=True)
 
     return jsonify({'message': 'បានកែប្រែដោយជោគជ័យ!'})
+
+# ─── Market Templates API ──────────────────────────────────────────────────────
+
+@app.route('/api/market-templates', methods=['GET'])
+def get_market_templates():
+    auth_key = request.headers.get('Authorization')
+    role = get_role_by_key(auth_key)
+    if role not in ['admin', 'moderator']:
+        return jsonify({'error': 'គ្មានសិទ្ធិមើលបញ្ជីឡើយ!'}), 403
+
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    q_sel = "SELECT team_id, depot, market FROM market_templates ORDER BY id DESC"
+    rows = execute_query(q_sel, fetch_all=True)
+    
+    result = []
+    for r in rows:
+        result.append({
+            'teamId': r['team_id'],
+            'depot': r['depot'],
+            'market': r['market']
+        })
+    return jsonify(result)
+
+@app.route('/api/market-templates/bulk', methods=['POST'])
+def save_market_templates():
+    auth_key = request.headers.get('Authorization')
+    role = get_role_by_key(auth_key)
+    if role not in ['admin', 'moderator']:
+        return jsonify({'error': 'គ្មានសិទ្ធិគ្រប់គ្រងឡើយ!'}), 403
+
+    data = request.json
+    if not isinstance(data, list):
+        return jsonify({'error': 'ទម្រង់ទិន្នន័យមិនត្រឹមត្រូវ!'}), 400
+
+    is_pg = bool(DATABASE_URL and HAS_PG)
+    
+    # Clear existing templates
+    execute_query("DELETE FROM market_templates", commit=True)
+    
+    # Insert new templates
+    now = get_ict_now()
+    q_ins = "INSERT INTO market_templates (team_id, depot, market, created_at) VALUES (%s, %s, %s, %s)" if is_pg else "INSERT INTO market_templates (team_id, depot, market, created_at) VALUES (?, ?, ?, ?)"
+    
+    for item in data:
+        team_id = str(item.get('teamId', '')).strip()
+        depot = str(item.get('depot', '')).strip()
+        market = str(item.get('market', '')).strip()
+        if team_id:
+            execute_query(q_ins, (team_id, depot, market, now), commit=True)
+            
+    return jsonify({'message': 'បានរក្សាទុកទិន្នន័យគំរូជោគជ័យ!'})
 
 # Serve frame image from DB Base64
 @app.route('/api/frame-image/<qr_id>')
