@@ -694,7 +694,7 @@ def get_market_templates():
         FROM market_templates mt 
         JOIN excel_documents ed ON mt.excel_document_id = ed.id 
         WHERE ed.is_active = 1 
-        ORDER BY mt.id DESC
+        ORDER BY ed.id DESC, mt.id ASC
     """
     rows = execute_query(q_sel, fetch_all=True)
     

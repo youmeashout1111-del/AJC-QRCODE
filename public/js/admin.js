@@ -622,6 +622,44 @@ function setupEventListeners() {
       }, 200);
     });
   }
+
+  // Default Location input listener to update Hashtag based on selected market
+  const qrDefaultLocInput = document.getElementById('qr-default-location');
+  if (qrDefaultLocInput) {
+    qrDefaultLocInput.addEventListener('input', (e) => {
+      const marketVal = e.target.value.trim();
+      const teamVal = document.getElementById('qr-id').value.trim();
+      if (teamVal && marketVal && typeof uploadedExcelData !== 'undefined' && uploadedExcelData && uploadedExcelData.length > 0) {
+        const match = uploadedExcelData.find(item => 
+          item.teamId.toLowerCase() === teamVal.toLowerCase() && 
+          item.market.toLowerCase() === marketVal.toLowerCase()
+        );
+        if (match && match.hashtag) {
+          const hashtagInput = document.getElementById('qr-hashtag');
+          if (hashtagInput) hashtagInput.value = match.hashtag;
+        }
+      }
+    });
+  }
+
+  // Edit Default Location input listener to update Hashtag in Edit Modal
+  const editQrDefaultLocInput = document.getElementById('edit-qr-default-location');
+  if (editQrDefaultLocInput) {
+    editQrDefaultLocInput.addEventListener('input', (e) => {
+      const marketVal = e.target.value.trim();
+      const teamVal = document.getElementById('edit-qr-id-val').value.trim();
+      if (teamVal && marketVal && typeof uploadedExcelData !== 'undefined' && uploadedExcelData && uploadedExcelData.length > 0) {
+        const match = uploadedExcelData.find(item => 
+          item.teamId.toLowerCase() === teamVal.toLowerCase() && 
+          item.market.toLowerCase() === marketVal.toLowerCase()
+        );
+        if (match && match.hashtag) {
+          const hashtagInput = document.getElementById('edit-qr-hashtag');
+          if (hashtagInput) hashtagInput.value = match.hashtag;
+        }
+      }
+    });
+  }
 }
 
 // Fetch all QR codes, scan logs and update UI
