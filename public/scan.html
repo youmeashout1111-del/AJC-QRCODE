@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="google" content="notranslate">
   <title>ស្កេន QR Code ថតរូបអនុស្សាវរីយ៍ - AJC</title>
+  <script>
+    // Force cache-busting on scan page to ensure scanners always run the latest code
+    (function() {
+      var urlParams = new URLSearchParams(window.location.search);
+      if (!urlParams.has('t')) {
+        urlParams.set('t', Date.now());
+        window.location.replace(window.location.pathname + '?' + urlParams.toString());
+      }
+    })();
+  </script>
   
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -296,6 +306,6 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Client-side scan logic -->
-  <script src="js/scan.js?v=3.5"></script>
+  <script src="js/scan.js?v=3.6"></script>
 </body>
 </html>
