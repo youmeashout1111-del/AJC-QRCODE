@@ -1132,12 +1132,13 @@ function drawQRWithText(qrId, qrName, defaultLocation, expiresAt, startDate, sca
     ctx.fillRect(0, 0, 600, 800);
     
     // Format top line
+    const cleanId = qrId.replace(/-copy(-\d+)?$/, '');
     const cleanName = qrName.replace(/^Team[-:]\s*/i, '');
     let line1 = `Team: ${qrName}`;
     if (qrName.toLowerCase().includes('team')) {
       line1 = `Team: ${cleanName}`;
-    } else if (/\d+/.test(qrId)) {
-      line1 = `Team: ${qrId}`;
+    } else if (/\d+/.test(cleanId)) {
+      line1 = `Team: ${cleanId}`;
     }
     
     // Draw top line
@@ -2777,7 +2778,7 @@ window.openEditQRModal = function(id) {
   if (!modal) return;
   
   document.getElementById('edit-qr-id').value = qr.id;
-  document.getElementById('edit-qr-id-val').value = qr.id;
+  document.getElementById('edit-qr-id-val').value = qr.id.replace(/-copy(-\d+)?$/, '');
   document.getElementById('edit-qr-name-val').value = qr.name;
   document.getElementById('edit-qr-hashtag').value = qr.hashtag || '';
   document.getElementById('edit-qr-default-location').value = qr.default_location || '';
