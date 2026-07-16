@@ -346,9 +346,9 @@ async function handleStep1Submit(e) {
         submitForm(); // Proceed without coordinates
       },
       {
-        enableHighAccuracy: true,
-        timeout: 3000,
-        maximumAge: 0
+        enableHighAccuracy: false, // Disables active hardware GPS query (saves 15s)
+        timeout: 2000,              // 2 seconds max wait
+        maximumAge: 300000          // Uses location cache up to 5 minutes old
       }
     );
   } else {
@@ -876,9 +876,9 @@ function requestGPSLocation() {
         console.warn("Geolocation warning:", error.message);
       },
       {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+        enableHighAccuracy: false, // Disables active hardware GPS query (saves 15s)
+        timeout: 4000,              // 4 seconds max wait
+        maximumAge: 300000          // Uses location cache up to 5 minutes old
       }
     );
   } else {
