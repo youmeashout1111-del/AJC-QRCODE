@@ -484,6 +484,11 @@ function setupEventListeners() {
             const nameInput = document.getElementById('qr-name');
             if (nameInput) nameInput.value = matches[0].depot;
             
+            const hashtagInput = document.getElementById('qr-hashtag');
+            if (hashtagInput && matches[0].hashtag) {
+              hashtagInput.value = matches[0].hashtag;
+            }
+            
             const locInput = document.getElementById('qr-default-location');
             if (locInput) {
               if (matches[0].market) {
@@ -543,6 +548,11 @@ function setupEventListeners() {
           if (matches.length > 0) {
             const nameInput = document.getElementById('edit-qr-name-val');
             if (nameInput) nameInput.value = matches[0].depot;
+            
+            const hashtagInput = document.getElementById('edit-qr-hashtag');
+            if (hashtagInput && matches[0].hashtag) {
+              hashtagInput.value = matches[0].hashtag;
+            }
             
             const locInput = document.getElementById('edit-qr-default-location');
             if (locInput) {
@@ -3249,7 +3259,8 @@ function handleExcelUpload(e) {
             const teamId = (row["Sales Team (Unique ID)"] || row["Sales Team ID"] || row["Sales Team"] || row["ID"] || "").toString().trim();
             const depot = (row["Depot"] || row["Depot Name"] || row["Name"] || "").toString().trim();
             const market = (row["Market Name"] || row["Market"] || row["ឈ្មោះផ្សារ"] || row["ទីតាំង"] || "").toString().trim();
-            return { teamId, depot, market };
+            const hashtag = (row["Text Hashtags"] || row["Text Hashtag"] || row["Hashtags"] || row["Hashtag"] || "").toString().trim();
+            return { teamId, depot, market, hashtag };
           }).filter(item => item.teamId !== "");
           
           if (rows.length === 0) {

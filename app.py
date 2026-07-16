@@ -144,9 +144,9 @@ def init_db():
     # Auto increment syntax: SQLite uses AUTOINCREMENT, PG uses SERIAL
     id_type = "SERIAL PRIMARY KEY" if is_pg else "INTEGER PRIMARY KEY AUTOINCREMENT"
     
-    # Migration: Check if market_templates has excel_document_id column. If not, drop table to recreate.
+    # Migration: Check if market_templates has excel_document_id column or hashtag. If not, drop table to recreate.
     try:
-        execute_query("SELECT excel_document_id FROM market_templates LIMIT 1")
+        execute_query("SELECT excel_document_id, hashtag FROM market_templates LIMIT 1")
     except Exception:
         try:
             execute_query("DROP TABLE IF EXISTS market_templates", commit=True)
@@ -237,6 +237,7 @@ def init_db():
             team_id           TEXT NOT NULL,
             depot             TEXT NOT NULL,
             market            TEXT NOT NULL,
+            hashtag           TEXT DEFAULT '',
             created_at        TEXT
         );
         """,
@@ -689,7 +690,7 @@ def get_market_templates():
 
     is_pg = bool(DATABASE_URL and HAS_PG)
     q_sel = """
-        SELECT mt.team_id, mt.depot, mt.market 
+        SELECT mt.team_id, mt.depot, mt.market, mt.hashtag 
         FROM market_templates mt 
         JOIN excel_documents ed ON mt.excel_document_id = ed.id 
         WHERE ed.is_active = 1 
@@ -702,7 +703,8 @@ def get_market_templates():
         result.append({
             'teamId': r['team_id'],
             'depot': r['depot'],
-            'market': r['market']
+            'market': r['market'],
+            'hashtag': r['hashtag']
         })
     return jsonify(result)
 
@@ -756,14 +758,15 @@ def upload_excel_document():
         doc_res = execute_query("SELECT last_insert_rowid() as id", fetch_one=True)
         doc_id = doc_res['id']
 
-    q_ins = "INSERT INTO market_templates (excel_document_id, team_id, depot, market, created_at) VALUES (%s, %s, %s, %s, %s)" if is_pg else "INSERT INTO market_templates (excel_document_id, team_id, depot, market, created_at) VALUES (?, ?, ?, ?, ?)"
+    q_ins = "INSERT INTO market_templates (excel_document_id, team_id, depot, market, hashtag, created_at) VALUES (%s, %s, %s, %s, %s, %s)" if is_pg else "INSERT INTO market_templates (excel_document_id, team_id, depot, market, hashtag, created_at) VALUES (?, ?, ?, ?, ?, ?)"
     
     for item in rows:
         team_id = str(item.get('teamId', '')).strip()
         depot = str(item.get('depot', '')).strip()
         market = str(item.get('market', '')).strip()
+        hashtag = str(item.get('hashtag', '')).strip()
         if team_id:
-            execute_query(q_ins, (doc_id, team_id, depot, market, now), commit=True)
+            execute_query(q_ins, (doc_id, team_id, depot, market, hashtag, now), commit=True)
             
     return jsonify({'message': 'បានបញ្ចូលឯកសារគំរូជោគជ័យ!', 'id': doc_id})
 
@@ -818,12 +821,12 @@ def get_excel_document_rows(doc_id):
     
     # Get rows
     q_rows = """
-        SELECT team_id, depot, market 
+        SELECT team_id, depot, market, hashtag 
         FROM market_templates 
         WHERE excel_document_id = %s 
         ORDER BY id ASC
     """ if is_pg else """
-        SELECT team_id, depot, market 
+        SELECT team_id, depot, market, hashtag 
         FROM market_templates 
         WHERE excel_document_id = ? 
         ORDER BY id ASC
@@ -835,7 +838,8 @@ def get_excel_document_rows(doc_id):
         result_rows.append({
             'teamId': r['team_id'],
             'depot': r['depot'],
-            'market': r['market']
+            'market': r['market'],
+            'hashtag': r['hashtag']
         })
         
     return jsonify({
