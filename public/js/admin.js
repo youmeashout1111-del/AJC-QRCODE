@@ -584,14 +584,20 @@ function setupEventListeners() {
     });
   }
 
-  // Clear value on focus to show all datalist options, restore on blur
+  // Clear value on mousedown/focus to show all datalist options, restore on blur
   const locInput = document.getElementById('qr-default-location');
   if (locInput) {
     let prevVal = '';
-    locInput.addEventListener('focus', () => {
+    locInput.addEventListener('mousedown', () => {
       prevVal = locInput.value;
-      locInput.placeholder = prevVal || 'ឧ. ផ្សារអូរឫស្សី Stall A12';
       locInput.value = '';
+    });
+    locInput.addEventListener('focus', () => {
+      if (locInput.value !== '') {
+        prevVal = locInput.value;
+        locInput.value = '';
+      }
+      locInput.placeholder = prevVal || 'ឧ. ផ្សារអូរឫស្សី Stall A12';
     });
     locInput.addEventListener('blur', () => {
       // Small timeout so datalist option selection registers first
@@ -604,14 +610,20 @@ function setupEventListeners() {
     });
   }
 
-  // Clear value on focus for Edit Default Location to show all datalist options
+  // Clear value on mousedown/focus for Edit Default Location to show all datalist options
   const editLocInput = document.getElementById('edit-qr-default-location');
   if (editLocInput) {
     let prevVal = '';
-    editLocInput.addEventListener('focus', () => {
+    editLocInput.addEventListener('mousedown', () => {
       prevVal = editLocInput.value;
-      editLocInput.placeholder = prevVal || 'ឧ. ផ្សារអូរឫស្សី Stall A12';
       editLocInput.value = '';
+    });
+    editLocInput.addEventListener('focus', () => {
+      if (editLocInput.value !== '') {
+        prevVal = editLocInput.value;
+        editLocInput.value = '';
+      }
+      editLocInput.placeholder = prevVal || 'ឧ. ផ្សារអូរឫស្សី Stall A12';
     });
     editLocInput.addEventListener('blur', () => {
       setTimeout(() => {
