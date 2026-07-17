@@ -1025,16 +1025,21 @@ function renderScanLogs() {
       <td style="font-weight: 600; vertical-align: middle;">${escapeHTML(log.name)}</td>
       <td style="vertical-align: middle;"><a href="tel:${log.phone}" style="color: #3b82f6; text-decoration: none; font-weight: 600;"><i class="fa-solid fa-phone"></i> ${escapeHTML(log.phone)}</a></td>
       <td style="vertical-align: middle; font-weight: 600; color: #475569;">${escapeHTML(log.device_model || 'មិនស្គាល់')}</td>
-      <td style="vertical-align: middle; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0; gap: 8px;">
-          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0;" title="${escapeHTML(log.location)}">
-            <i class="fa-solid fa-location-dot" style="color: #ff3366; margin-right: 4px;"></i>${escapeHTML(log.location)}
-          </span>
-          ${(log.latitude && log.longitude) ? `
-            <a href="https://www.google.com/maps/search/?api=1&query=${log.latitude},${log.longitude}" target="_blank" class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 0.7rem; border-radius: 4px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.05); border-color: rgba(0,0,0,0.12); flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px;" title="មើលលើ Google Maps">
-              <i class="fa-solid fa-map-location-dot" style="color: #3b82f6; margin-right: 0;"></i> Map
+      <td style="vertical-align: middle; max-width: 280px; min-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+        <div style="display: flex; align-items: center; width: 100%; min-width: 0; gap: 8px;">
+          ${(log.latitude && log.longitude && log.latitude !== 'None' && log.latitude !== 'null' && log.latitude !== '') ? `
+            <a href="https://www.google.com/maps/search/?api=1&query=${log.latitude},${log.longitude}" target="_blank" style="color: #ff3366; text-decoration: none; display: flex; align-items: center; min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="មើលលើ Google Maps (កូអរដោនេ៖ ${log.latitude}, ${log.longitude})">
+              <i class="fa-solid fa-map-location-dot" style="color: #3b82f6; margin-right: 6px; font-size: 1.05rem; flex-shrink: 0;"></i>
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-bottom: 1px dashed #3b82f6; color: #3b82f6; font-weight: 600;">
+                ${escapeHTML(log.location)}
+              </span>
             </a>
-          ` : ''}
+          ` : `
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; color: #64748b;" title="${escapeHTML(log.location)} (គ្មានកូអរដោនេ GPS)">
+              <i class="fa-solid fa-location-dot" style="color: #94a3b8; margin-right: 6px; flex-shrink: 0;"></i>
+              ${escapeHTML(log.location)}
+            </span>
+          `}
         </div>
       </td>
       <td style="text-align: center; vertical-align: middle;">

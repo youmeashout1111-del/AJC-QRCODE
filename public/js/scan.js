@@ -292,6 +292,7 @@ async function handleStep1Submit(e) {
   const phone = document.getElementById('scanner-phone').value.trim();
   const location = document.getElementById('scanner-location').value.trim();
   const submitForm = async () => {
+    const resolvedModel = await getDeviceModelAsync();
     const payload = {
       qr_id: qrId,
       name: name,
@@ -299,7 +300,7 @@ async function handleStep1Submit(e) {
       location: location,
       latitude: userLatitude,
       longitude: userLongitude,
-      device_model: detectDeviceModel()
+      device_model: resolvedModel
     };
     
     try {
@@ -928,7 +929,7 @@ const iphoneModelNumbers = {
 };
 
 // Detect Device Model (Android and iOS mapping)
-function detectDeviceModel() {
+async function getDeviceModelAsync() {
   const userAgent = navigator.userAgent;
   
   // 1. Check if iOS Device
@@ -998,11 +999,26 @@ function detectDeviceModel() {
   
   // 2. Check if Android Device
   if (/Android/.test(userAgent)) {
+    // Try modern User-Agent Client Hints first to bypass UA reduction (which freezes model to "K")
+    if (navigator.userAgentData && typeof navigator.userAgentData.getHighEntropyValues === 'function') {
+      try {
+        const hints = await navigator.userAgentData.getHighEntropyValues(['model']);
+        if (hints && hints.model && hints.model !== 'K') {
+          return hints.model;
+        }
+      } catch (err) {
+        console.warn("Failed to get high-entropy client hints:", err);
+      }
+    }
+    
+    // Fallback to parsing User-Agent
     const match = userAgent.match(/\bAndroid\s+[^;]+;\s*([^;\)]+)/);
     if (match && match[1]) {
       let model = match[1].trim();
       model = model.replace(/\s+Build\/.+$/i, '');
-      return model || 'Android Device';
+      if (model && model !== 'K') {
+        return model;
+      }
     }
     return 'Android Device';
   }
