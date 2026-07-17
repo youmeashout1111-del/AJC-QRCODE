@@ -131,10 +131,8 @@ async function fetchQRConfig() {
       shareBlock.classList.toggle('hidden', !showFb && !showTt && !showYt);
     }
     
-    // Request GPS Location only if enabled by admin
+    // Request GPS Location only if enabled by admin (postponed until form submission)
     if (qrConfig.capture_location === true) {
-      requestGPSLocation();
-      
       // Show secure context alert if Geolocation will be blocked by browser
       const isSecure = window.isSecureContext || window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       if (!isSecure) {

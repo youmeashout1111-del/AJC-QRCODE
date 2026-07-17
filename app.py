@@ -131,6 +131,97 @@ def execute_query(query, params=(), commit=False, fetch_all=False, fetch_one=Fal
         if not is_pg and commit:
             _db_lock.release()
 
+from PIL import Image
+import io
+
+def compress_image(file_obj, ext):
+    """Compress image buffer using Pillow, scaling down to max 1200px preserving transparent aspect ratio."""
+    ext = ext.lower().strip()
+    if ext == 'svg':
+        return file_obj.read()
+    try:
+        img = Image.open(file_obj)
+        
+        # Max resolution 1200x1200px is extremely sharp for frames but tiny in size
+        max_size = (1200, 1200)
+        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+        
+        out_buf = io.BytesIO()
+        if ext in ['png', 'webp']:
+            img.save(out_buf, format='PNG', optimize=True)
+        else:
+            if img.mode in ('RGBA', 'LA'):
+                img = img.convert('RGB')
+            img.save(out_buf, format='JPEG', quality=85, optimize=True)
+            
+        out_buf.seek(0)
+        return out_buf.read()
+    except Exception as e:
+        print("Error compressing image:", e)
+        file_obj.seek(0)
+        return file_obj.read()
+
+def compress_existing_frames():
+    """Scan and compress all existing frames in the database if they are larger than 150KB."""
+    try:
+        is_pg = bool(DATABASE_URL and HAS_PG)
+        q_sel = "SELECT id, name, image_data FROM frames"
+        rows = execute_query(q_sel, fetch_all=True)
+        if not rows:
+            return
+            
+        q_upd = "UPDATE frames SET image_data = %s WHERE id = %s" if is_pg else "UPDATE frames SET image_data = ? WHERE id = ?"
+        
+        for r in rows:
+            frame_id = r['id']
+            name = r['name']
+            data_uri = r['image_data']
+            
+            if not data_uri or ',' not in data_uri:
+                continue
+                
+            header, b64data = data_uri.split(',', 1)
+            ext = 'png'
+            if 'image/jpeg' in header or 'image/jpg' in header:
+                ext = 'jpg'
+            elif 'image/svg' in header:
+                ext = 'svg'
+            elif 'image/webp' in header:
+                ext = 'webp'
+                
+            if ext == 'svg':
+                continue
+                
+            img_bytes = base64.b64decode(b64data)
+            orig_size_kb = len(img_bytes) / 1024
+            if orig_size_kb < 150:
+                continue
+                
+            try:
+                img = Image.open(io.BytesIO(img_bytes))
+                img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
+                
+                out_buf = io.BytesIO()
+                if ext in ['png', 'webp']:
+                    img.save(out_buf, format='PNG', optimize=True)
+                else:
+                    if img.mode in ('RGBA', 'LA'):
+                        img = img.convert('RGB')
+                    img.save(out_buf, format='JPEG', quality=85, optimize=True)
+                    
+                compressed_bytes = out_buf.getvalue()
+                comp_size_kb = len(compressed_bytes) / 1024
+                
+                if comp_size_kb < orig_size_kb:
+                    new_b64 = base64.b64encode(compressed_bytes).decode('utf-8')
+                    new_data_uri = f"{header},{new_b64}"
+                    execute_query(q_upd, (new_data_uri, frame_id), commit=True)
+                    print(f"SUCCESS Migration: Compressed database frame '{name}' (ID: {frame_id}) from {orig_size_kb:.1f}KB to {comp_size_kb:.1f}KB")
+            except Exception as ex:
+                print(f"Failed to compress frame ID {frame_id}: {ex}")
+    except Exception as e:
+        print("Error in migration compress_existing_frames:", e)
+
 # ─── Database Bootstrap ───────────────────────────────────────────────────────
 
 def init_db():
@@ -314,6 +405,9 @@ def init_db():
                 (key, role, max_dev, note, now), commit=True
             )
         print("✓ Database seeded with default keys.")
+        
+    # Compress all existing database frames (Migration)
+    compress_existing_frames()
 
 # Run init DB
 init_db()
@@ -384,7 +478,8 @@ def file_to_base64(file_obj, ext):
         'webp': 'image/webp',
     }
     mime = mime_map.get(ext, 'image/png')
-    data = base64.b64encode(file_obj.read()).decode('utf-8')
+    raw_data = compress_image(file_obj, ext)
+    data = base64.b64encode(raw_data).decode('utf-8')
     return f"data:{mime};base64,{data}"
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
@@ -472,13 +567,13 @@ def get_public_qrcode(qr_id):
     is_pg = bool(DATABASE_URL and HAS_PG)
     q_sel = """
         SELECT id, name, hashtag, facebook_url, tiktok_url, youtube_url,
-               frame_image, frame_image_data, default_location,
+               frame_image, default_location,
                show_facebook, show_tiktok, show_youtube, capture_location, expires_at, cannot_edit_market, start_date
         FROM qrcodes
         WHERE id = %s
     """ if is_pg else """
         SELECT id, name, hashtag, facebook_url, tiktok_url, youtube_url,
-               frame_image, frame_image_data, default_location,
+               frame_image, default_location,
                show_facebook, show_tiktok, show_youtube, capture_location, expires_at, cannot_edit_market, start_date
         FROM qrcodes
         WHERE id = ?
