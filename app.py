@@ -7,6 +7,7 @@ import sqlite3
 try:
     import psycopg2
     from psycopg2.extras import RealDictCursor
+    from psycopg2.pool import ThreadedConnectionPool
     HAS_PG = True
 except ImportError:
     HAS_PG = False
@@ -38,18 +39,46 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # Lock for SQLite writes (only used in SQLite fallback mode)
 _db_lock = threading.Lock()
 
+db_pool = None
+if DATABASE_URL and HAS_PG:
+    try:
+        url = DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        db_pool = ThreadedConnectionPool(minconn=1, maxconn=15, dsn=url)
+        print("✓ PostgreSQL Connection Pool initialized.")
+    except Exception as pool_err:
+        print(f"Connection pool error: {pool_err}")
+
+def release_db(conn):
+    """Closes SQLite connections or returns PostgreSQL connections to the pool."""
+    if conn is None:
+        return
+    if DATABASE_URL and HAS_PG and db_pool:
+        try:
+            db_pool.putconn(conn)
+        except Exception:
+            try:
+                conn.close()
+            except Exception:
+                pass
+    else:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
 # ─── Database Abstraction Layer ───────────────────────────────────────────────
 
 def get_db_connection():
     """Returns a connection object. Supports PostgreSQL (Supabase) and SQLite."""
     if DATABASE_URL and HAS_PG:
-        # Convert postgres:// to postgresql:// for psycopg2 compatibility
+        if db_pool:
+            return db_pool.getconn()
         url = DATABASE_URL
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql://", 1)
-        # PostgreSQL Connection
-        conn = psycopg2.connect(url)
-        return conn
+        return psycopg2.connect(url)
     else:
         # SQLite Fallback Connection
         conn = sqlite3.connect(DB_PATH, check_same_thread=False)
@@ -68,11 +97,11 @@ def get_db():
 
 @app.teardown_appcontext
 def teardown_db(exception):
-    """Closes the database connection at the end of the request."""
+    """Closes or releases the database connection at the end of the request."""
     if has_app_context():
         db = g.pop('db', None)
         if db is not None:
-            db.close()
+            release_db(db)
 
 def execute_query(query, params=(), commit=False, fetch_all=False, fetch_one=False):
     """Executes a database query safely reusing the request-scoped connection."""
@@ -124,10 +153,7 @@ def execute_query(query, params=(), commit=False, fetch_all=False, fetch_one=Fal
     finally:
         # If we are NOT in an application context, we must close connection immediately
         if not has_app_context() and conn:
-            try:
-                conn.close()
-            except Exception:
-                pass
+            release_db(conn)
         if not is_pg and commit:
             _db_lock.release()
 
@@ -406,8 +432,8 @@ def init_db():
             )
         print("✓ Database seeded with default keys.")
         
-    # Compress all existing database frames (Migration)
-    compress_existing_frames()
+    # Compress all existing database frames (Migration) in a background thread to prevent blocking startup
+    threading.Thread(target=compress_existing_frames, daemon=True).start()
 
 # Run init DB
 init_db()
