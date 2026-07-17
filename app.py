@@ -488,10 +488,12 @@ def file_to_base64(file_obj, ext):
 def add_header(response):
     path = request.path
     if path.endswith('.html') or path.endswith('.js') or path.endswith('.css') or path == '/' or path.startswith('/api/'):
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
+        if 'Cache-Control' not in response.headers:
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
     return response
+
 
 @app.route('/')
 def index():
@@ -1527,7 +1529,10 @@ def get_active_frame():
     row = execute_query("SELECT id, name, image_data FROM frames WHERE is_active = 1 LIMIT 1", fetch_one=True)
     if not row:
         return jsonify({'error': 'គ្មាន Frame ណាមួយត្រូវបានកំណត់ជា Active ឡើយ!'}), 404
-    return jsonify(row)
+    resp = jsonify(row)
+    resp.headers["Cache-Control"] = "public, max-age=120"  # Cache for 2 minutes to speed up scans
+    return resp
+
 
 # ── Server Info ───────────────────────────────────────────────────────────────
 

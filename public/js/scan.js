@@ -29,7 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
   parseQueryParams();
   setupEventListeners();
   setupImageEditorListeners();
+  requestGPSLocation(); // Pre-fetch GPS location on page load to eliminate delay
 });
+
 
 // Parse query params to get QR ID
 async function parseQueryParams() {
