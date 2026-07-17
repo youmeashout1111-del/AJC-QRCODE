@@ -1024,6 +1024,7 @@ function renderScanLogs() {
       <td style="font-weight: 700; vertical-align: middle;">${escapeHTML(log.qr_name)}</td>
       <td style="font-weight: 600; vertical-align: middle;">${escapeHTML(log.name)}</td>
       <td style="vertical-align: middle;"><a href="tel:${log.phone}" style="color: #3b82f6; text-decoration: none; font-weight: 600;"><i class="fa-solid fa-phone"></i> ${escapeHTML(log.phone)}</a></td>
+      <td style="vertical-align: middle; font-weight: 600; color: #475569;">${escapeHTML(log.device_model || 'មិនស្គាល់')}</td>
       <td style="vertical-align: middle; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
         <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0; gap: 8px;">
           <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0;" title="${escapeHTML(log.location)}">
@@ -1508,6 +1509,7 @@ function exportLogsToExcel() {
       'ពេលវេលា': dateFormatted,
       'ឈ្មោះអ្នក Scan': log.name || '',
       'លេខទូរស័ព្ទ': log.phone || '',
+      'ម៉ូដែលទូរស័ព្ទ': log.device_model || 'មិនស្គាល់',
       'ទីតាំង / ឈ្មោះផ្សារ': log.location || '',
       'Latitude': log.latitude || '',
       'Longitude': log.longitude || ''
@@ -1526,6 +1528,7 @@ function exportLogsToExcel() {
     { wch: 20 }, // ពេលវេលា
     { wch: 20 }, // ឈ្មោះអ្នក Scan
     { wch: 15 }, // លេខទូរស័ព្ទ
+    { wch: 22 }, // ម៉ូដែលទូរស័ព្ទ
     { wch: 30 }, // ទីតាំង / ឈ្មោះផ្សារ
     { wch: 12 }, // Latitude
     { wch: 12 }  // Longitude

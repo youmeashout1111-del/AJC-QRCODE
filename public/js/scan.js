@@ -291,7 +291,6 @@ async function handleStep1Submit(e) {
   const name = document.getElementById('scanner-name').value.trim();
   const phone = document.getElementById('scanner-phone').value.trim();
   const location = document.getElementById('scanner-location').value.trim();
-
   const submitForm = async () => {
     const payload = {
       qr_id: qrId,
@@ -299,7 +298,8 @@ async function handleStep1Submit(e) {
       phone: phone,
       location: location,
       latitude: userLatitude,
-      longitude: userLongitude
+      longitude: userLongitude,
+      device_model: detectDeviceModel()
     };
     
     try {
@@ -884,4 +884,133 @@ function requestGPSLocation() {
   } else {
     console.warn("Geolocation is not supported by this browser.");
   }
+}
+
+// iPhone Model Numbers Mapping List
+const iphoneModelNumbers = {
+  'iPhone 16 Pro Max': 'A3084, A3295, A3296, A3297',
+  'iPhone 16 Pro': 'A3083, A3292, A3293, A3294',
+  'iPhone 16 Plus': 'A3082, A3289, A3290, A3291',
+  'iPhone 16': 'A3081, A3286, A3287, A3288',
+  'iPhone 15 Pro Max': 'A2849, A3105, A3106, A3108',
+  'iPhone 15 Pro': 'A2848, A3101, A3102, A3104',
+  'iPhone 15 Plus': 'A2847, A3093, A3094, A3096',
+  'iPhone 15': 'A2846, A3089, A3090, A3092',
+  'iPhone 14 Pro Max': 'A2651, A2893, A2894, A2895, A2896',
+  'iPhone 14 Pro': 'A2650, A2889, A2890, A2891, A2892',
+  'iPhone 14 Plus': 'A2632, A2885, A2886, A2887, A2888',
+  'iPhone 14': 'A2649, A2881, A2882, A2883, A2884',
+  'iPhone 13 Pro Max': 'A2484, A2641, A2643, A2644, A2645',
+  'iPhone 13 Pro': 'A2483, A2636, A2638, A2639, A2640',
+  'iPhone 13': 'A2482, A2631, A2633, A2634, A2635',
+  'iPhone 13 Mini': 'A2481, A2626, A2628, A2629, A2630',
+  'iPhone 12 Pro Max': 'A2342, A2410, A2411, A2412',
+  'iPhone 12 Pro': 'A2341, A2406, A2407, A2408',
+  'iPhone 12': 'A2172, A2402, A2403, A2404',
+  'iPhone 12 Mini': 'A2176, A2398, A2399, A2400',
+  'iPhone 11 Pro Max': 'A2161, A2220, A2218',
+  'iPhone 11 Pro': 'A2160, A2217, A2215',
+  'iPhone 11': 'A2111, A2221, A2223',
+  'iPhone XS Max': 'A1921, A2101, A2102, A2103, A2104',
+  'iPhone XS': 'A1920, A2097, A2098, A2099, A2100',
+  'iPhone XR': 'A1984, A2105, A2106, A2107, A2108',
+  'iPhone X': 'A1865, A1901, A1902',
+  'iPhone SE (3rd Gen)': 'A2595, A2782, A2783, A2784, A2785',
+  'iPhone SE (2nd Gen)': 'A2275, A2296, A2298',
+  'iPhone 8 Plus': 'A1864, A1897, A1898',
+  'iPhone 8': 'A1863, A1905, A1906',
+  'iPhone 7 Plus': 'A1661, A1784, A1785',
+  'iPhone 7': 'A1660, A1778, A1779',
+  'iPhone 6S Plus': 'A1634, A1687, A1699',
+  'iPhone 6S': 'A1633, A1688, A1700',
+  'iPhone 6 Plus': 'A1522, A1524, A1593',
+  'iPhone 6': 'A1549, A1586, A1589'
+};
+
+// Detect Device Model (Android and iOS mapping)
+function detectDeviceModel() {
+  const userAgent = navigator.userAgent;
+  
+  // 1. Check if iOS Device
+  const isIOS = /iPad|iPhone|iPod/.test(userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  
+  if (isIOS) {
+    let gpu = 'Unknown';
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (gl) {
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+        if (debugInfo) {
+          gpu = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '';
+        }
+      }
+    } catch (e) {
+      console.warn("WebGL query blocked or failed:", e);
+    }
+    
+    const width = Math.min(window.screen.width, window.screen.height);
+    const height = Math.max(window.screen.width, window.screen.height);
+    const dpr = window.devicePixelRatio;
+    
+    let modelName = 'iPhone';
+    
+    // Screen size mapping table
+    if (width === 440 && height === 956) {
+      modelName = 'iPhone 16 Pro Max';
+    } else if (width === 402 && height === 874) {
+      modelName = 'iPhone 16 Pro';
+    } else if (width === 430 && height === 932) {
+      if (gpu.includes('A17') || gpu.includes('A18') || gpu.includes('Apple GPU')) {
+        modelName = 'iPhone 15 Pro Max';
+      } else {
+        modelName = 'iPhone 14 Pro Max / 15 Plus';
+      }
+    } else if (width === 393 && height === 852) {
+      if (gpu.includes('A17') || gpu.includes('A18') || gpu.includes('Apple GPU')) {
+        modelName = 'iPhone 15 Pro';
+      } else {
+        modelName = 'iPhone 14 Pro / 15';
+      }
+    } else if (width === 428 && height === 926) {
+      modelName = 'iPhone 12 Pro Max / 13 Pro Max / 14 Plus';
+    } else if (width === 390 && height === 844) {
+      modelName = 'iPhone 12 / 12 Pro / 13 / 13 Pro / 14';
+    } else if (width === 414 && height === 896) {
+      modelName = dpr === 3 ? 'iPhone XS Max / 11 Pro Max' : 'iPhone XR / 11';
+    } else if (width === 375 && height === 812) {
+      modelName = 'iPhone X / XS / 11 Pro';
+    } else if (width === 360 && height === 780) {
+      modelName = 'iPhone 12 Mini / 13 Mini';
+    } else if (width === 414 && height === 736) {
+      modelName = 'iPhone 6 Plus / 6S Plus / 7 Plus / 8 Plus';
+    } else if (width === 375 && height === 667) {
+      modelName = dpr === 3 ? 'iPhone 12 Mini / 13 Mini (scaled)' : 'iPhone 6 / 6S / 7 / 8 / SE (2nd/3rd Gen)';
+    } else if (width === 320 && height === 568) {
+      modelName = 'iPhone 5 / 5S / 5C / SE (1st Gen)';
+    } else {
+      modelName = 'iPhone (Unknown Model)';
+    }
+    
+    const numbers = iphoneModelNumbers[modelName];
+    return numbers ? `${modelName} (${numbers})` : modelName;
+  }
+  
+  // 2. Check if Android Device
+  if (/Android/.test(userAgent)) {
+    const match = userAgent.match(/\bAndroid\s+[^;]+;\s*([^;\)]+)/);
+    if (match && match[1]) {
+      let model = match[1].trim();
+      model = model.replace(/\s+Build\/.+$/i, '');
+      return model || 'Android Device';
+    }
+    return 'Android Device';
+  }
+  
+  // 3. Fallbacks
+  if (/Macintosh/.test(userAgent)) return 'Mac';
+  if (/Windows/.test(userAgent)) return 'Windows PC';
+  if (/Linux/.test(userAgent)) return 'Linux PC';
+  
+  return 'Unknown Device';
 }

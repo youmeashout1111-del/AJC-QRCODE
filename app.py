@@ -4,6 +4,7 @@ import uuid
 import random
 import string
 import sqlite3
+import re
 try:
     import psycopg2
     from psycopg2.extras import RealDictCursor
@@ -313,15 +314,16 @@ def init_db():
         """,
         """
         CREATE TABLE IF NOT EXISTS scans (
-            id        TEXT PRIMARY KEY,
-            qr_id     TEXT,
-            qr_name   TEXT,
-            name      TEXT,
-            phone     TEXT DEFAULT '',
-            location  TEXT,
-            latitude  TEXT,
-            longitude TEXT,
-            timestamp TEXT
+            id           TEXT PRIMARY KEY,
+            qr_id        TEXT,
+            qr_name      TEXT,
+            name         TEXT,
+            phone        TEXT DEFAULT '',
+            location     TEXT,
+            latitude     TEXT,
+            longitude    TEXT,
+            device_model TEXT DEFAULT '',
+            timestamp    TEXT
         );
         """,
         f"""
@@ -384,7 +386,8 @@ def init_db():
         ('qrcodes', 'expires_at', 'TEXT'),
         ('frames', 'created_at', 'TEXT'),
         ('qrcodes', 'cannot_edit_market', 'INTEGER DEFAULT 1'),
-        ('qrcodes', 'start_date', 'TEXT')
+        ('qrcodes', 'start_date', 'TEXT'),
+        ('scans', 'device_model', "TEXT DEFAULT ''")
     ]:
         try:
             execute_query(f"ALTER TABLE {tbl} ADD COLUMN {col_name} {col_t}", commit=True)
@@ -1418,23 +1421,35 @@ def record_scan():
     scan_id = uuid.uuid4().hex[:12]
     now     = get_ict_now()
 
+    device_model = data.get('device_model', '').strip()
+    if not device_model:
+        user_agent = request.headers.get('User-Agent', '')
+        if 'Android' in user_agent:
+            match = re.search(r'\bAndroid\s+[^;]+;\s*([^;\)]+)', user_agent)
+            device_model = match.group(1).strip() if match else 'Android Device'
+        elif 'iPhone' in user_agent or 'iPad' in user_agent:
+            device_model = 'iPhone'
+        else:
+            device_model = 'Unknown Device'
+
     q_ins = """
-        INSERT INTO scans (id, qr_id, qr_name, name, phone, location, latitude, longitude, timestamp)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        INSERT INTO scans (id, qr_id, qr_name, name, phone, location, latitude, longitude, device_model, timestamp)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
     """ if is_pg else """
-        INSERT INTO scans (id, qr_id, qr_name, name, phone, location, latitude, longitude, timestamp)
-        VALUES (?,?,?,?,?,?,?,?,?)
+        INSERT INTO scans (id, qr_id, qr_name, name, phone, location, latitude, longitude, device_model, timestamp)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
     """
     
     execute_query(q_ins, (
         scan_id, qr_id, qr_name, name, phone, location,
-        str(latitude or ''), str(longitude or ''), now
+        str(latitude or ''), str(longitude or ''), device_model, now
     ), commit=True)
 
     return jsonify({
         'id': scan_id, 'qr_id': qr_id, 'qr_name': qr_name,
         'name': name, 'phone': phone, 'location': location,
-        'latitude': latitude, 'longitude': longitude, 'timestamp': now
+        'latitude': latitude, 'longitude': longitude,
+        'device_model': device_model, 'timestamp': now
     }), 201
 
 # ── Photo Frames ──────────────────────────────────────────────────────────────
