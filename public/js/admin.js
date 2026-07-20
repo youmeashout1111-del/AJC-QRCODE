@@ -1026,20 +1026,15 @@ function renderScanLogs() {
       <td style="vertical-align: middle;"><a href="tel:${log.phone}" style="color: #3b82f6; text-decoration: none; font-weight: 600;"><i class="fa-solid fa-phone"></i> ${escapeHTML(log.phone)}</a></td>
       <td style="vertical-align: middle; font-weight: 600; color: #475569;">${escapeHTML(log.device_model || 'មិនស្គាល់')}</td>
       <td style="vertical-align: middle; max-width: 280px; min-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-        <div style="display: flex; align-items: center; width: 100%; min-width: 0; gap: 8px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-width: 0; gap: 8px;">
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0;" title="${escapeHTML(log.location)}">
+            <i class="fa-solid fa-location-dot" style="color: #ff3366; margin-right: 4px;"></i>${escapeHTML(log.location)}
+          </span>
           ${(log.latitude && log.longitude && log.latitude !== 'None' && log.latitude !== 'null' && log.latitude !== '') ? `
-            <a href="https://www.google.com/maps/search/?api=1&query=${log.latitude},${log.longitude}" target="_blank" style="color: #ff3366; text-decoration: none; display: flex; align-items: center; min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="មើលលើ Google Maps (កូអរដោនេ៖ ${log.latitude}, ${log.longitude})">
-              <i class="fa-solid fa-map-location-dot" style="color: #3b82f6; margin-right: 6px; font-size: 1.05rem; flex-shrink: 0;"></i>
-              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-bottom: 1px dashed #3b82f6; color: #3b82f6; font-weight: 600;">
-                ${escapeHTML(log.location)}
-              </span>
+            <a href="https://www.google.com/maps/search/?api=1&query=${log.latitude},${log.longitude}" target="_blank" class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 0.7rem; border-radius: 4px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.05); border-color: rgba(0,0,0,0.12); flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px;" title="មើលលើ Google Maps (កូអរដោនេ៖ ${log.latitude}, ${log.longitude})">
+              <i class="fa-solid fa-map-location-dot" style="color: #3b82f6; margin-right: 0;"></i> Map
             </a>
-          ` : `
-            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; color: #64748b;" title="${escapeHTML(log.location)} (គ្មានកូអរដោនេ GPS)">
-              <i class="fa-solid fa-location-dot" style="color: #94a3b8; margin-right: 6px; flex-shrink: 0;"></i>
-              ${escapeHTML(log.location)}
-            </span>
-          `}
+          ` : ''}
         </div>
       </td>
       <td style="text-align: center; vertical-align: middle;">
@@ -1508,6 +1503,9 @@ function exportLogsToExcel() {
     const minutes = String(dateObj.getMinutes()).padStart(2, '0');
     const dateFormatted = `${month}-${day}-${year} ${hours}:${minutes}`;
     
+    const hasGPS = log.latitude && log.longitude && log.latitude !== 'None' && log.latitude !== 'null' && log.latitude !== '';
+    const mapUrl = hasGPS ? `https://www.google.com/maps/search/?api=1&query=${log.latitude},${log.longitude}` : '';
+    
     return {
       'ឈ្មោះ QR Code': log.qr_name || '',
       'លេខសម្គាល់ QR': log.qr_id || '',
@@ -1516,6 +1514,11 @@ function exportLogsToExcel() {
       'លេខទូរស័ព្ទ': log.phone || '',
       'ម៉ូដែលទូរស័ព្ទ': log.device_model || 'មិនស្គាល់',
       'ទីតាំង / ឈ្មោះផ្សារ': log.location || '',
+      'Location link': hasGPS ? {
+        v: 'Google Map',
+        t: 's',
+        l: { Target: mapUrl, Tooltip: 'Open Google Maps' }
+      } : '',
       'Latitude': log.latitude || '',
       'Longitude': log.longitude || ''
     };
@@ -1535,6 +1538,7 @@ function exportLogsToExcel() {
     { wch: 15 }, // លេខទូរស័ព្ទ
     { wch: 22 }, // ម៉ូដែលទូរស័ព្ទ
     { wch: 30 }, // ទីតាំង / ឈ្មោះផ្សារ
+    { wch: 15 }, // Location link
     { wch: 12 }, // Latitude
     { wch: 12 }  // Longitude
   ];
@@ -2997,12 +3001,23 @@ function applySiemreapStyle(ws) {
     if (key[0] === '!') continue;
     const cell = ws[key];
     if (cell && typeof cell === 'object') {
-      cell.s = {
-        font: {
-          name: "Khmer OS Siemreap",
-          size: 11
-        }
-      };
+      if (cell.l) {
+        cell.s = {
+          font: {
+            name: "Khmer OS Siemreap",
+            size: 11,
+            color: { rgb: "0563C1" },
+            underline: true
+          }
+        };
+      } else {
+        cell.s = {
+          font: {
+            name: "Khmer OS Siemreap",
+            size: 11
+          }
+        };
+      }
     }
   }
 }

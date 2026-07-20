@@ -528,6 +528,7 @@ h1, h2, h3, h4, h5, h6 {
 
 table.logs-table {
   width: 100%;
+  min-width: 950px;
   border-collapse: collapse;
   text-align: left;
   font-size: 0.78rem;
